@@ -1,5 +1,9 @@
 package com.nailora.repository;
 
-public interface TimeSlotRepository {
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.nailora.entity.TimeSlot;
+
+public interface TimeSlotRepository extends JpaRepository<TimeSlot, Long> {
 
 }

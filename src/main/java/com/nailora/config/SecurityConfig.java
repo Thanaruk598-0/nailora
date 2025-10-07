@@ -8,26 +8,20 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 public class SecurityConfig {
 
-  @Bean
-  SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    http
-      // ช่วง dev ปิด CSRF ไปก่อน (เดี๋ยวเปิดตอนทำฟอร์มจริง/เว็บฮุค)
-      .csrf(csrf -> csrf.disable())
+	@Bean
+	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+		http
+				// ช่วง dev ปิด CSRF ไปก่อน (เดี๋ยวเปิดตอนทำฟอร์มจริง/เว็บฮุค)
+				.csrf(csrf -> csrf.disable())
 
-      // เปิดหมดให้เข้าได้ เพื่อไม่ให้เด้ง /login ตอนเริ่มโปรเจกต์
-      .authorizeHttpRequests(auth -> auth
-        .requestMatchers(
-          "/health",
-          "/css/**", "/js/**", "/images/**",
-          "/webhooks/**"
-        ).permitAll()
-        .anyRequest().permitAll()
-      )
+				// เปิดหมดให้เข้าได้ เพื่อไม่ให้เด้ง /login ตอนเริ่มโปรเจกต์
+				.authorizeHttpRequests(
+						auth -> auth.requestMatchers("/health", "/css/**", "/js/**", "/images/**", "/webhooks/**")
+								.permitAll().anyRequest().permitAll())
 
-      // ปิดหน้า login/basic ชั่วคราว
-      .formLogin(form -> form.disable())
-      .httpBasic(basic -> basic.disable());
-    
+				// ปิดหน้า login/basic ชั่วคราว
+				.formLogin(form -> form.disable()).httpBasic(basic -> basic.disable());
+
 // // เปลี่ยนเฉพาะส่วน authorize + login
 //    .authorizeHttpRequests(auth -> auth
 //      .requestMatchers("/health", "/css/**", "/js/**", "/images/**", "/webhooks/**").permitAll()
@@ -39,6 +33,6 @@ public class SecurityConfig {
 //      .defaultSuccessUrl("/admin/services", true)
 //    );
 
-    return http.build();
-  }
+		return http.build();
+	}
 }

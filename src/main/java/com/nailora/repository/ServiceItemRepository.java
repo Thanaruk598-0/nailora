@@ -1,5 +1,9 @@
 package com.nailora.repository;
 
-public interface ServiceItemRepository {
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.nailora.entity.ServiceItem;
+
+public interface ServiceItemRepository extends JpaRepository<ServiceItem, Long> {
 
 }
