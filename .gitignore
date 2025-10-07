@@ -31,4 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+<<<<<<< HEAD
 /bin/
+=======
+
+# Secret Key
+application-secret.properties
+>>>>>>> 835e8391270da2ec190ca4ca50215321173adb01
