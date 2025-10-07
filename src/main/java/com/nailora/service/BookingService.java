@@ -10,4 +10,5 @@ public interface BookingService {
 
 	int remainingCapacity(Long slotId, LocalDateTime now);
 
+	String createStripePaymentIntent(Long bookingId);
 }

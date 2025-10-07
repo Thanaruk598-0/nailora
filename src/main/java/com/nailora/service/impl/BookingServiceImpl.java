@@ -6,7 +6,13 @@ import com.nailora.entity.TimeSlot;
 import com.nailora.repository.BookingRepository;
 import com.nailora.repository.TimeSlotRepository;
 import com.nailora.service.BookingService;
+import com.stripe.exception.StripeException;
+import com.stripe.model.PaymentIntent;
+import com.stripe.net.RequestOptions;
+import com.stripe.param.PaymentIntentCreateParams;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -68,6 +74,43 @@ public class BookingServiceImpl implements BookingService {
 				.status(Booking.Status.BOOKED).gateway(Booking.Gateway.STRIPE).build();
 
 		return bookingRepo.save(b).getId();
+	}
+
+	@Override
+	public String createStripePaymentIntent(Long bookingId) {
+		var b = bookingRepo.findById(bookingId)
+				.orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "booking not found"));
+
+		// guard สถานะ/หมดเวลา
+		if (b.getStatus() != Booking.Status.BOOKED)
+			throw new ResponseStatusException(CONFLICT, "booking not active");
+		if (b.getDepositDueAt() != null && b.getDepositDueAt().isBefore(LocalDateTime.now()))
+			throw new ResponseStatusException(CONFLICT, "deposit window expired");
+		if (b.getDepositStatus() == Booking.DepositStatus.PAID)
+			throw new ResponseStatusException(CONFLICT, "already paid");
+
+		// แปลง amount เป็นสตางค์
+		long amount = b.getDepositAmount().multiply(new java.math.BigDecimal("100")).longValueExact();
+
+		PaymentIntentCreateParams params = PaymentIntentCreateParams.builder().setAmount(amount).setCurrency("thb")
+				.setDescription("NAILORA Deposit for Booking #" + bookingId)
+				.putMetadata("bookingId", String.valueOf(bookingId)).setAutomaticPaymentMethods(
+						PaymentIntentCreateParams.AutomaticPaymentMethods.builder().setEnabled(true).build())
+				.build();
+
+		RequestOptions opts = RequestOptions.builder().setIdempotencyKey("PAYINT:" + bookingId).build();
+
+		try {
+			PaymentIntent pi = PaymentIntent.create(params, opts);
+			// บันทึกอ้างอิง และตั้งสถานะกำลังชำระ (optional)
+			b.setPaymentRef(pi.getId());
+			b.setDepositStatus(Booking.DepositStatus.PROCESSING);
+			bookingRepo.save(b);
+			return pi.getClientSecret();
+		} catch (StripeException e) {
+			throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_GATEWAY,
+					"stripe error: " + e.getMessage());
+		}
 	}
 
 }
