@@ -1,21 +1,24 @@
--- ===== 1) Roles & Admin User =====
+-- NAILORA Seed (DEV) — matches SpringPhysicalNamingStrategy (snake_case)
+-- Safe to run repeatedly; uses ON DUPLICATE KEY where appropriate.
+
+-- ===== 0) Safety: create roles & users without depending on join table =====
 INSERT INTO role(name) VALUES ('ROLE_ADMIN')
 ON DUPLICATE KEY UPDATE name = VALUES(name);
 
--- ใช้ bcrypt จริงของรหัสผ่านที่ตั้งเอง แล้วแทน {bcrypt}… ด้านล่าง
--- ตัวอย่าง (รหัส: admin123) — แนะนำให้เปลี่ยนก่อนส่งงานจริง
+-- demo admin (bcrypt of 'admin123' — change ASAP)
 INSERT INTO app_user(username, password_hash, enabled)
 VALUES ('admin', '{bcrypt}$2a$10$J8j3NfM9xgZ9q3X6r2wqzOM1wC3wq8C0f3Qq6l0y7q3rV2o4WqIh2', true)
 ON DUPLICATE KEY UPDATE enabled = VALUES(enabled);
 
--- map admin → ROLE_ADMIN
-INSERT INTO user_roles(user_id, role_id)
-SELECT u.id, r.id
-FROM app_user u, role r
-WHERE u.username='admin' AND r.name='ROLE_ADMIN'
-ON DUPLICATE KEY UPDATE user_id = user_id; -- no-op แต่ป้องกัน insert ซ้ำ
+-- If your schema has a join table named `user_roles(user_id, role_id)` created by JPA:
+-- >>> UNCOMMENT THIS BLOCK <<<
+-- INSERT INTO user_roles(user_id, role_id)
+-- SELECT u.id, r.id
+-- FROM app_user u, role r
+-- WHERE u.username='admin' AND r.name='ROLE_ADMIN'
+-- ON DUPLICATE KEY UPDATE user_id = user_id;
 
--- ===== 2) Catalog: Service Items =====
+-- ===== 1) Catalog =====
 INSERT INTO service_item(name, duration_min, price, deposit_min, active) VALUES
 ('ทำเล็บเจล (Basic)', 60, 800.00, 200.00, true),
 ('ต่อเล็บอะคริลิก',   90, 1500.00, 300.00, true)
@@ -25,7 +28,6 @@ ON DUPLICATE KEY UPDATE
   deposit_min  = VALUES(deposit_min),
   active       = VALUES(active);
 
--- ===== 3) Add-ons =====
 INSERT INTO add_on(name, extra_minutes, extra_price, active) VALUES
 ('เพ้นต์ลาย',   20, 150.00, true),
 ('ถอดเล็บเก่า', 15, 100.00, true)
@@ -34,8 +36,7 @@ ON DUPLICATE KEY UPDATE
   extra_price   = VALUES(extra_price),
   active        = VALUES(active);
 
--- ===== 4) Time Slots (วันนี้ & พรุ่งนี้) =====
--- วันนี้ 14:00–15:00 (ทำเล็บเจล)
+-- ===== 2) Time Slots (today / tomorrow based on DB time) =====
 INSERT INTO time_slot(service_id, start_at, end_at, capacity, open, tech_name)
 SELECT s.id,
        DATE_ADD(CURDATE(), INTERVAL 14 HOUR),
@@ -47,7 +48,6 @@ ON DUPLICATE KEY UPDATE
   capacity= VALUES(capacity),
   open    = VALUES(open);
 
--- วันนี้ 15:00–16:30 (ต่อเล็บอะคริลิก)
 INSERT INTO time_slot(service_id, start_at, end_at, capacity, open, tech_name)
 SELECT s.id,
        DATE_ADD(CURDATE(), INTERVAL 15 HOUR),
@@ -59,7 +59,6 @@ ON DUPLICATE KEY UPDATE
   capacity= VALUES(capacity),
   open    = VALUES(open);
 
--- พรุ่งนี้ 11:00–12:00 (ทำเล็บเจล)
 INSERT INTO time_slot(service_id, start_at, end_at, capacity, open, tech_name)
 SELECT s.id,
        DATE_ADD(CURDATE(), INTERVAL 1 DAY) + INTERVAL 11 HOUR,
@@ -71,8 +70,7 @@ ON DUPLICATE KEY UPDATE
   capacity= VALUES(capacity),
   open    = VALUES(open);
 
--- ===== 5) (ออปชัน) ตัวอย่าง Booking =====
--- UNPAID (เดโม่ขั้นตอนก่อนชำระ)
+-- ===== 3) Demo Bookings =====
 INSERT INTO booking(
   time_slot_id, customer_name, phone, note,
   status, service_price, add_on_price, deposit_amount,
@@ -90,7 +88,6 @@ WHERE s.name='ทำเล็บเจล (Basic)'
   AND NOT EXISTS (SELECT 1 FROM booking b WHERE b.time_slot_id=t.id AND b.phone='0890000001')
 LIMIT 1;
 
--- PAID (เดโม่จ่ายเสร็จพร้อมใบเสร็จ)
 INSERT INTO booking(
   time_slot_id, customer_name, phone, note,
   status, service_price, add_on_price, deposit_amount,
@@ -108,7 +105,7 @@ WHERE s.name='ต่อเล็บอะคริลิก'
   AND NOT EXISTS (SELECT 1 FROM booking b WHERE b.time_slot_id=t.id AND b.phone='0890000002')
 LIMIT 1;
 
--- ผูก Add-on ให้กับใบจองที่ 2 (ถ้ามี)
+-- add-on link for paid booking (if tables exist)
 INSERT INTO booking_add_on(booking_id, add_on_id)
 SELECT b.id, a.id
 FROM booking b
