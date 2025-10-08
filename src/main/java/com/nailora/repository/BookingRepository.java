@@ -31,4 +31,5 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 			    and b.depositDueAt < :now
 			""")
 	List<Booking> findExpiredUnpaid(LocalDateTime now);
+
 }

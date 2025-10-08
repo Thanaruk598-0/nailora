@@ -10,8 +10,7 @@ import com.stripe.model.Charge;
 import com.stripe.model.Event;
 import com.stripe.net.Webhook;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -22,11 +21,11 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/webhooks")
 public class WebhookController {
-	private static final Logger log = LoggerFactory.getLogger(WebhookController.class);
 
 	private final BookingRepository bookingRepo;
 	private final ObjectMapper objectMapper = new ObjectMapper();
@@ -38,7 +37,8 @@ public class WebhookController {
 	@ResponseStatus(HttpStatus.OK)
 	@Transactional
 	public void handle(@RequestBody String payload, @RequestHeader("Stripe-Signature") String sigHeader) {
-		// 1) verify signature ด้วย Stripe SDK
+
+		// 1) verify signature
 		final Event event;
 		try {
 			event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
@@ -47,26 +47,27 @@ public class WebhookController {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid signature");
 		}
 
-		// 2) log type
 		log.info("[stripe] event: {} id={}", event.getType(), event.getId());
 
-		// 3) แตก payload ด้วย Jackson (ไม่ใช้ EventDataObjectDeserializer)
+		// 2) ใช้ Jackson แตก payload
 		try {
 			JsonNode root = objectMapper.readTree(payload);
-			JsonNode obj = root.path("data").path("object"); // payment_intent object
 			String type = root.path("type").asText(null);
+			JsonNode dataObj = root.path("data").path("object");
 
 			switch (type) {
-			case "payment_intent.succeeded" -> onSucceeded(obj);
-			case "payment_intent.payment_failed" -> onFailed(obj);
-			case "charge.refunded" -> onRefunded(root.path("data").path("object")); // object เป็น charge
+			case "payment_intent.succeeded" -> onSucceeded(dataObj); // object = payment_intent
+			case "payment_intent.payment_failed" -> onFailed(dataObj); // object = payment_intent
+			case "charge.refunded" -> onRefunded(dataObj); // object = charge
 			default -> log.info("[stripe] ignore event: {}", type);
 			}
 		} catch (Exception ex) {
 			log.warn("[stripe] parse payload error: {}", ex.getMessage());
-			// 200 OK เพื่อไม่ให้ Stripe รีทริกเกอร์ตามดีไซน์, แต่ log ไว้พอ
+			// ตอบ 200 เสมอตาม best practice; Stripe จะไม่รีทรีทำให้ไม่ลูป
 		}
 	}
+
+	/** --- handlers (Jackson only) --- */
 
 	private void onSucceeded(JsonNode pi) {
 		String piId = textOrNull(pi, "id");
@@ -75,13 +76,13 @@ public class WebhookController {
 		Long bookingId = parseLong(bookingIdStr);
 
 		log.info("[stripe] succeeded for pi={}, bookingId={}", piId, bookingId);
-
 		if (bookingId == null)
 			return;
 
 		Optional<Booking> opt = bookingRepo.findById(bookingId);
 		if (opt.isEmpty())
 			return;
+
 		Booking b = opt.get();
 
 		// idempotent
@@ -110,8 +111,7 @@ public class WebhookController {
 
 	private void onFailed(JsonNode pi) {
 		String piId = textOrNull(pi, "id");
-		String bookingIdStr = pi.path("metadata").path("bookingId").asText(null);
-		Long bookingId = parseLong(bookingIdStr);
+		Long bookingId = parseLong(pi.path("metadata").path("bookingId").asText(null));
 		log.info("[stripe] failed for pi={}, bookingId={}", piId, bookingId);
 		if (bookingId == null)
 			return;
@@ -126,6 +126,7 @@ public class WebhookController {
 	}
 
 	private void onRefunded(JsonNode charge) {
+		// object เป็น charge
 		String piId = textOrNull(charge, "payment_intent");
 		if (piId == null)
 			return;
@@ -137,6 +138,8 @@ public class WebhookController {
 		});
 	}
 
+	/** --- utils --- */
+	
 	private Long parseLong(String s) {
 		try {
 			return s == null ? null : Long.valueOf(s);
@@ -147,6 +150,6 @@ public class WebhookController {
 
 	private String textOrNull(JsonNode node, String field) {
 		JsonNode v = node.path(field);
-		return v.isMissingNode() || v.isNull() ? null : v.asText();
+		return (v.isMissingNode() || v.isNull()) ? null : v.asText();
 	}
 }
