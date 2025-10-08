@@ -1,24 +1,49 @@
--- NAILORA Seed (DEV) — matches SpringPhysicalNamingStrategy (snake_case)
--- Safe to run repeatedly; uses ON DUPLICATE KEY where appropriate.
+-- =========================================================
+-- NAILORA data.sql (DEV) - no CREATE INDEX (compat mode)
+-- =========================================================
 
--- ===== 0) Safety: create roles & users without depending on join table =====
+-- ----- DEDUPE -----
+DELETE s1 FROM service_item s1
+JOIN service_item s2 ON s1.name = s2.name AND s1.id > s2.id;
+
+DELETE a1 FROM add_on a1
+JOIN add_on a2 ON a1.name = a2.name AND a1.id > a2.id;
+
+-- (ถ้าลบไม่ได้เพราะติด FK ให้คอมเมนต์บรรทัดนี้)
+DELETE t1 FROM time_slot t1
+JOIN time_slot t2
+  ON t1.service_id = t2.service_id
+ AND t1.start_at  = t2.start_at
+ AND t1.id > t2.id;
+
+DELETE b1 FROM booking_add_on b1
+JOIN booking_add_on b2
+  ON b1.booking_id = b2.booking_id
+ AND b1.add_on_id  = b2.add_on_id
+ AND b1.id > b2.id;
+
+DELETE u1 FROM app_user u1
+JOIN app_user u2 ON u1.username = u2.username AND u1.id > u2.id;
+
+DELETE r1 FROM role r1
+JOIN role r2 ON r1.name = r2.name AND r1.id > r2.id;
+
+-- ----- ROLES & ADMIN USER -----
 INSERT INTO role(name) VALUES ('ROLE_ADMIN')
 ON DUPLICATE KEY UPDATE name = VALUES(name);
 
--- demo admin (bcrypt of 'admin123' — change ASAP)
 INSERT INTO app_user(username, password_hash, enabled)
 VALUES ('admin', '{bcrypt}$2a$10$J8j3NfM9xgZ9q3X6r2wqzOM1wC3wq8C0f3Qq6l0y7q3rV2o4WqIh2', true)
 ON DUPLICATE KEY UPDATE enabled = VALUES(enabled);
 
--- If your schema has a join table named `user_roles(user_id, role_id)` created by JPA:
--- >>> UNCOMMENT THIS BLOCK <<<
+-- ถ้ามีตาราง join user_roles ให้ปลดคอมเมนต์บล็อกนี้
 -- INSERT INTO user_roles(user_id, role_id)
 -- SELECT u.id, r.id
 -- FROM app_user u, role r
 -- WHERE u.username='admin' AND r.name='ROLE_ADMIN'
 -- ON DUPLICATE KEY UPDATE user_id = user_id;
 
--- ===== 1) Catalog =====
+-- ----- CATALOG -----
 INSERT INTO service_item(name, duration_min, price, deposit_min, active) VALUES
 ('ทำเล็บเจล (Basic)', 60, 800.00, 200.00, true),
 ('ต่อเล็บอะคริลิก',   90, 1500.00, 300.00, true)
@@ -36,7 +61,7 @@ ON DUPLICATE KEY UPDATE
   extra_price   = VALUES(extra_price),
   active        = VALUES(active);
 
--- ===== 2) Time Slots (today / tomorrow based on DB time) =====
+-- ----- TIME SLOTS -----
 INSERT INTO time_slot(service_id, start_at, end_at, capacity, open, tech_name)
 SELECT s.id,
        DATE_ADD(CURDATE(), INTERVAL 14 HOUR),
@@ -70,7 +95,7 @@ ON DUPLICATE KEY UPDATE
   capacity= VALUES(capacity),
   open    = VALUES(open);
 
--- ===== 3) Demo Bookings =====
+-- ----- DEMO BOOKINGS -----
 INSERT INTO booking(
   time_slot_id, customer_name, phone, note,
   status, service_price, add_on_price, deposit_amount,
@@ -105,7 +130,6 @@ WHERE s.name='ต่อเล็บอะคริลิก'
   AND NOT EXISTS (SELECT 1 FROM booking b WHERE b.time_slot_id=t.id AND b.phone='0890000002')
 LIMIT 1;
 
--- add-on link for paid booking (if tables exist)
 INSERT INTO booking_add_on(booking_id, add_on_id)
 SELECT b.id, a.id
 FROM booking b
