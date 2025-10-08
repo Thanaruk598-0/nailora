@@ -28,21 +28,6 @@ JOIN app_user u2 ON u1.username = u2.username AND u1.id > u2.id;
 DELETE r1 FROM role r1
 JOIN role r2 ON r1.name = r2.name AND r1.id > r2.id;
 
--- ----- ROLES & ADMIN USER -----
-INSERT INTO role(name) VALUES ('ROLE_ADMIN')
-ON DUPLICATE KEY UPDATE name = VALUES(name);
-
-INSERT INTO app_user(username, password_hash, enabled)
-VALUES ('admin', '{bcrypt}$2a$10$J8j3NfM9xgZ9q3X6r2wqzOM1wC3wq8C0f3Qq6l0y7q3rV2o4WqIh2', true)
-ON DUPLICATE KEY UPDATE enabled = VALUES(enabled);
-
--- ถ้ามีตาราง join user_roles ให้ปลดคอมเมนต์บล็อกนี้
--- INSERT INTO user_roles(user_id, role_id)
--- SELECT u.id, r.id
--- FROM app_user u, role r
--- WHERE u.username='admin' AND r.name='ROLE_ADMIN'
--- ON DUPLICATE KEY UPDATE user_id = user_id;
-
 -- ----- CATALOG -----
 INSERT INTO service_item(name, duration_min, price, deposit_min, active) VALUES
 ('ทำเล็บเจล (Basic)', 60, 800.00, 200.00, true),
