@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="th"
+      th:replace="~{layout :: layout(~{::section})}">
+<section>
+  <h1 th:text="${title} ?: 'จัดการสลอต (แอดมิน)'">จัดการสลอต (แอดมิน)</h1>
+
+  <form method="get" action="/admin/slots" style="margin-bottom:12px;">
+    วันที่: <input type="date" name="date" th:value="${date}">
+    บริการ:
+    <select name="serviceId">
+      <option th:each="s: ${services}" th:value="${s.id}"
+              th:selected="${serviceId} == ${s.id}"
+              th:text="${s.name}">svc</option>
+    </select>
+    <button type="submit">ค้นหา</button>
+  </form>
+
+  <h3>สร้างสลอตเป็นชุด</h3>
+  <form method="post" action="/admin/slots/generate">
+    <input type="hidden" name="serviceId" th:value="${serviceId}">
+    <input type="hidden" name="date" th:value="${date}">
+    เวลาเริ่ม: <input type="time" name="fromTime" value="10:00">
+    เวลาสิ้นสุด: <input type="time" name="toTime" value="19:00">
+    ความยาว(นาที): <input type="number" name="durationMin" value="60" min="10" max="600">
+    ช่องไฟ(นาที): <input type="number" name="gapMin" value="0" min="0" max="120">
+    ความจุ: <input type="number" name="capacity" value="1" min="1">
+    ช่าง: <input type="text" name="techName" value="Mint">
+    เปิดสลอต: <input type="checkbox" name="open" checked>
+    <!-- สำคัญ: CSRF สำหรับ POST -->
+    <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+    <button type="submit">สร้าง</button>
+  </form>
+
+  <h3 style="margin-top:12px;">สลอตของวัน</h3>
+  <table border="1" cellspacing="0" cellpadding="6">
+    <thead>
+    <tr><th>#</th><th>เวลา</th><th>ช่าง</th><th>ความจุ</th><th>เปิด</th><th>จัดการ</th></tr>
+    </thead>
+    <tbody>
+    <tr th:each="t, i: ${slots}">
+      <td th:text="${i.count}">1</td>
+      <td th:text="${#temporals.format(t.startAt,'HH:mm')} + ' - ' + ${#temporals.format(t.endAt,'HH:mm')}">-</td>
+      <td th:text="${t.techName}">-</td>
+      <td th:text="${t.capacity}">1</td>
+      <td th:text="${t.open}">true</td>
+      <td>
+        <form th:action="@{'/admin/slots/' + ${t.id} + '/delete'}" method="post">
+          <input type="hidden" name="date" th:value="${date}">
+          <input type="hidden" name="serviceId" th:value="${serviceId}">
+          <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+          <button type="submit" onclick="return confirm('ลบสลอตนี้?')">ลบ</button>
+        </form>
+      </td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(slots)}">
+      <td colspan="6">— ยังไม่มีสลอต —</td>
+    </tr>
+    </tbody>
+  </table>
+
+  <p style="margin-top:12px;"><a href="/booking/services">← ไปหน้าลูกค้า</a></p>
+</section>
+</html>

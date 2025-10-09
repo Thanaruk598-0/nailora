@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="th"
+      th:replace="~{layout :: layout(~{::section})}">
+<section>
+  <h1>ยืนยันการจอง</h1>
+
+  <p>บริการ: <b th:text="${bookingSummary.serviceName}">-</b></p>
+  <p>ช่าง: <span th:text="${bookingSummary.techName}">-</span></p>
+  <p>เวลา: <span th:text="${#temporals.format(bookingSummary.startAt,'dd MMM HH:mm')}">-</span></p>
+
+  <h3>ตัวเลือกเสริม (Add-on)</h3>
+  <div>
+    <label th:each="a : ${addOns}" style="display:block; margin-bottom:6px;">
+      <input type="checkbox" class="addOnCheck"
+             th:attr="data-id=${a.get('id')},data-price=${a.get('extraPrice')}" />
+      <span th:text="${a.get('name')}">เพ้นต์ลาย</span>
+      (<span th:text="${#numbers.formatDecimal(a.get('extraPrice'),1,'COMMA',2,'POINT')}">0.00</span> บาท)
+    </label>
+    <div th:if="${#lists.isEmpty(addOns)}">— ไม่มีตัวเลือกเสริม —</div>
+  </div>
+
+  <h3 style="margin-top:12px;">สรุปราคา</h3>
+  <table border="1" cellspacing="0" cellpadding="6">
+    <tr><td>ราคาบริการ</td><td id="priceService">—</td></tr>
+    <tr><td>ราคา Add-on</td><td id="priceAddOn">—</td></tr>
+    <tr><td><b>รวม</b></td><td id="priceTotal"><b>—</b></td></tr>
+    <tr><td>มัดจำที่ต้องชำระ</td><td id="priceDeposit"><b th:text="${bookingSummary.depositAmount}">0.00</b></td></tr>
+  </table>
+
+  <h3 style="margin-top:12px;">ข้อมูลผู้จอง</h3>
+  <form id="f" onsubmit="return false;">
+    <input name="customerName" placeholder="ชื่อ-สกุล" required>
+    <input name="phone" placeholder="เบอร์โทร" required>
+    <input name="note" placeholder="โน้ต">
+    <button id="btnCreate" type="button">ยืนยันและไปชำระ</button>
+  </form>
+
+  <div id="pay" style="display:none">
+    <div id="card-element"></div>
+    <button id="btnPay" type="button">ชำระมัดจำ</button>
+    <div id="msg"></div>
+  </div>
+
+  <div id="props"
+       th:data-slotid="${slotId}"
+       th:data-serviceid="${serviceId}"
+       th:data-publishablekey="${@environment.getProperty('stripe.publishable.key')}"></div>
+
+  <script src="https://js.stripe.com/v3/"></script>
+  <script src="/js/confirm.js"></script>
+</section>
+</html>

@@ -17,23 +17,23 @@ public class TimeSlot {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "service_id", nullable = false)
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "service_id")
 	private ServiceItem service; // อ้างบริการ
 
-	@Column(nullable = false)
+	@Column(name = "start_at")   
 	private LocalDateTime startAt; // เวลาเริ่มคิว
 
-	@Column(nullable = false)
+	@Column(name = "end_at")
 	private LocalDateTime endAt; // เวลาจบคิว
 
-	@Column(nullable = false)
-	private Integer capacity = 1; // จำนวนที่นั่ง/ที่รับได้ในช่วงนั้น
+	@Column(name = "capacity")
+	private Integer capacity; // จำนวนที่นั่ง/ที่รับได้ในช่วงนั้น
 
-	@Column(nullable = false)
-	private Boolean open = true; // เปิดให้จองสาธารณะไหม
+	@Column(name = "open")
+	private Boolean open; // เปิดให้จองสาธารณะไหม
 
-	@Column(length = 80)
+	@Column(name = "tech_name")
 	private String techName; // ชื่อช่าง/ผู้ทำบริการ
 
 }

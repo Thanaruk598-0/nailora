@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="th"
+      th:replace="~{layout :: layout(~{::section})}">
+<section>
+  <h1 th:text="${title} ?: 'รายการจองของคุณ'">รายการจองของคุณ</h1>
+  <p>เบอร์: <b th:text="${phone}">-</b></p>
+
+  <table border="1" cellspacing="0" cellpadding="6">
+    <thead>
+    <tr>
+      <th>#</th><th>บริการ</th><th>ช่าง</th><th>เวลา</th><th>สถานะ</th>
+      <th>มัดจำ</th><th>ราคารวม</th><th>รายละเอียด</th><th>ใบเสร็จ</th><th>จัดการ</th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr th:each="b, iStat : ${bookings}">
+        <td th:text="${iStat.count}">1</td>
+        <td th:text="${b.get('serviceName')}">-</td>
+        <td th:text="${b.get('techName')}">-</td>
+        <td th:text="${#temporals.format(b.get('startAt'), 'dd MMM HH:mm')}">-</td>
+        <td>
+          <span th:text="${b.get('status')}">BOOKED</span>
+          (<span th:text="${b.get('depositStatus')}">PAID</span>)
+        </td>
+        <td th:text="${#numbers.formatDecimal(b.get('depositAmount'), 1, 'COMMA', 2, 'POINT')}">0.00</td>
+        <td th:text="${#numbers.formatDecimal(b.get('totalPrice'), 1, 'COMMA', 2, 'POINT')}">0.00</td>
+        <td>
+          <div>
+            <div>บริการ: <span th:text="${#numbers.formatDecimal(b.get('servicePrice'),1,'COMMA',2,'POINT')}">0.00</span></div>
+            <div>Add-on:
+              <span th:if="${#lists.isEmpty(b.get('addOnNames'))}">-</span>
+              <ul th:if="${!#lists.isEmpty(b.get('addOnNames'))}">
+                <li th:each="name : ${b.get('addOnNames')}" th:text="${name}"></li>
+              </ul>
+              รวม: <b th:text="${#numbers.formatDecimal(b.get('addOnPrice'),1,'COMMA',2,'POINT')}">0.00</b>
+            </div>
+          </div>
+        </td>
+        <td>
+          <a th:if="${b.get('receiptUrl') != null}" th:href="${b.get('receiptUrl')}" target="_blank">เปิดใบเสร็จ</a>
+          <span th:if="${b.get('receiptUrl') == null}">-</span>
+        </td>
+        <td>
+          <!-- เงื่อนไขฝั่ง BE คำนวณให้แล้ว: canCancel = true เฉพาะคิวอนาคต/ล่าสุด -->
+          <button th:if="${b.get('canCancel') == true}" type="button"
+                  th:attr="data-id=${b.get('id')}"
+                  onclick="app.cancelBooking(event)">ยกเลิก</button>
+          <span th:if="${b.get('canCancel') != true}">—</span>
+        </td>
+      </tr>
+      <tr th:if="${#lists.isEmpty(bookings)}">
+        <td colspan="10">ไม่พบรายการ</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="margin-top:12px;"><a href="/my-bookings">← กลับหน้าใส่เบอร์</a></p>
+</section>
+</html>

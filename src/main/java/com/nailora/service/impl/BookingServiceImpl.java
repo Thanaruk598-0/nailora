@@ -6,6 +6,8 @@ import com.nailora.entity.TimeSlot;
 import com.nailora.repository.BookingRepository;
 import com.nailora.repository.TimeSlotRepository;
 import com.nailora.service.BookingService;
+import com.nailora.service.CustomerAccessService;
+import com.nailora.service.DepositService;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.net.RequestOptions;
@@ -13,12 +15,15 @@ import com.stripe.param.PaymentIntentCreateParams;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -29,6 +34,10 @@ public class BookingServiceImpl implements BookingService {
 
 	private final BookingRepository bookingRepo;
 	private final TimeSlotRepository timeSlotRepo;
+	private final CustomerAccessService accessService;
+	private final DepositService depositService;
+	private final java.time.Clock clock;
+	private final JdbcTemplate jdbc;
 
 	@Override
 	public int remainingCapacity(Long slotId, LocalDateTime now) {
@@ -54,7 +63,7 @@ public class BookingServiceImpl implements BookingService {
 		}
 
 		// 3) เช็คความจุ (ที่นั่งที่ถูกถือไว้ = paid หรือ unpaid แต่ยังไม่หมดเวลา)
-		var now = LocalDateTime.now();
+		var now = java.time.LocalDateTime.now(); // หรือ LocalDateTime.now(clock)
 		long holding = bookingRepo.countHoldingSeats(req.timeSlotId(), now);
 		if (holding >= slot.getCapacity()) {
 			throw new ResponseStatusException(CONFLICT, "slot is full");
@@ -65,15 +74,34 @@ public class BookingServiceImpl implements BookingService {
 		BigDecimal servicePrice = slot.getService().getPrice();
 		BigDecimal deposit = slot.getService().getDepositMin();
 
-		// 5) บันทึก Booking: ถือไว้ 5 นาที
-		LocalDateTime due = now.plusMinutes(5);
-		Booking b = Booking.builder().timeSlot(slot).customerName(req.customerName()).phone(req.phone())
-				.note(req.note()).servicePrice(servicePrice).addOnPrice(BigDecimal.ZERO) // TODO: คำนวณ add-on ใน Step
-																							// ถัดไป
-				.depositAmount(deposit).depositStatus(Booking.DepositStatus.UNPAID).depositDueAt(due)
-				.status(Booking.Status.BOOKED).gateway(Booking.Gateway.STRIPE).build();
+		List<Long> addOnIds = req.addOnIds() == null ? java.util.List.of() : req.addOnIds();
+		BigDecimal addOnPrice = java.math.BigDecimal.ZERO;
+		if (!addOnIds.isEmpty()) {
+			String inSql = addOnIds.stream().map(id -> "?").reduce((a, b) -> a + "," + b).orElse("?");
+			BigDecimal sum = jdbc.queryForObject(
+					"SELECT COALESCE(SUM(extra_price),0) FROM add_on WHERE id IN (" + inSql + ")", BigDecimal.class,
+					addOnIds.toArray());
+			addOnPrice = (sum == null ? BigDecimal.ZERO : sum);
+		}
 
-		return bookingRepo.save(b).getId();
+		// 5) บันทึก Booking: ถือไว้ 5 นาที
+		// บันทึก Booking
+		var due = now.plusMinutes(5);
+		Booking b = Booking.builder().timeSlot(slot).customerName(req.customerName()).phone(req.phone())
+				.note(req.note()).servicePrice(servicePrice).addOnPrice(addOnPrice).depositAmount(deposit)
+				.depositStatus(Booking.DepositStatus.UNPAID).depositDueAt(due).status(Booking.Status.BOOKED)
+				.gateway(Booking.Gateway.STRIPE).createdAt(now).build();
+
+		Long bookingId = bookingRepo.save(b).getId();
+		
+		if (!addOnIds.isEmpty()) {
+            addOnIds.forEach(aid -> jdbc.update(
+                "INSERT INTO booking_add_on(booking_id, add_on_id) VALUES (?, ?)",
+                bookingId, aid
+            ));
+        }
+		
+		return bookingId;
 	}
 
 	@Override
@@ -81,7 +109,7 @@ public class BookingServiceImpl implements BookingService {
 		var b = bookingRepo.findById(bookingId)
 				.orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "booking not found"));
 
-		// guard สถานะ/หมดเวลา
+		// guard พื้นฐาน
 		if (b.getStatus() != Booking.Status.BOOKED)
 			throw new ResponseStatusException(CONFLICT, "booking not active");
 		if (b.getDepositDueAt() != null && b.getDepositDueAt().isBefore(LocalDateTime.now()))
@@ -89,28 +117,138 @@ public class BookingServiceImpl implements BookingService {
 		if (b.getDepositStatus() == Booking.DepositStatus.PAID)
 			throw new ResponseStatusException(CONFLICT, "already paid");
 
-		// แปลง amount เป็นสตางค์
-		long amount = b.getDepositAmount().multiply(new java.math.BigDecimal("100")).longValueExact();
-
-		PaymentIntentCreateParams params = PaymentIntentCreateParams.builder().setAmount(amount).setCurrency("thb")
-				.setDescription("NAILORA Deposit for Booking #" + bookingId)
-				.putMetadata("bookingId", String.valueOf(bookingId)).setAutomaticPaymentMethods(
-						PaymentIntentCreateParams.AutomaticPaymentMethods.builder().setEnabled(true).build())
-				.build();
-
-		RequestOptions opts = RequestOptions.builder().setIdempotencyKey("PAYINT:" + bookingId).build();
-
 		try {
+			// ถ้ามี paymentRef แล้ว เช็คสถานะก่อน
+			if (b.getPaymentRef() != null && !b.getPaymentRef().isBlank()) {
+				PaymentIntent existing = PaymentIntent.retrieve(b.getPaymentRef());
+				String st = existing.getStatus(); // requires_payment_method / requires_confirmation / processing /
+													// succeeded / canceled / ...
+
+				switch (st) {
+				case "requires_payment_method":
+				case "requires_confirmation":
+					// ใช้ client_secret เดิมต่อได้
+					return existing.getClientSecret();
+
+				case "processing":
+					// อย่าคอนเฟิร์มซ้ำ
+					throw new ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+							"payment is processing, try again in a moment");
+
+				case "succeeded":
+					throw new ResponseStatusException(CONFLICT, "already paid");
+
+				case "canceled":
+				default:
+					// ใช้ต่อไม่ได้ -> สร้างใหม่ด้านล่าง
+					break;
+				}
+			}
+
+			// --- สร้าง PaymentIntent ใหม่ ---
+			long amount = b.getDepositAmount().multiply(new java.math.BigDecimal("100")).longValueExact();
+
+			PaymentIntentCreateParams params = PaymentIntentCreateParams.builder().setAmount(amount).setCurrency("thb")
+					.setDescription("NAILORA Deposit for Booking #" + bookingId)
+					.putMetadata("bookingId", String.valueOf(bookingId)) // ให้ webhook ใช้แมป booking
+					.setAutomaticPaymentMethods(
+							PaymentIntentCreateParams.AutomaticPaymentMethods.builder().setEnabled(true).build())
+					.build();
+
+			// ใช้ idempotency key ใหม่ทุกครั้งที่ “สร้างใหม่”
+			String idemKey = "PAYINT:" + bookingId + ":" + System.currentTimeMillis();
+
+			RequestOptions opts = RequestOptions.builder().setIdempotencyKey(idemKey).build();
+
 			PaymentIntent pi = PaymentIntent.create(params, opts);
-			// บันทึกอ้างอิง และตั้งสถานะกำลังชำระ (optional)
 			b.setPaymentRef(pi.getId());
-			b.setDepositStatus(Booking.DepositStatus.PROCESSING);
+			b.setDepositStatus(Booking.DepositStatus.PROCESSING); // optional
 			bookingRepo.save(b);
+
 			return pi.getClientSecret();
-		} catch (StripeException e) {
+
+		} catch (com.stripe.exception.StripeException e) {
+			var err = e.getStripeError();
+			String requestId = e.getRequestId(); // from StripeException
+			Integer statusCode = e.getStatusCode(); // <-- ใช้จาก StripeException
+			String code = (err != null ? err.getCode() : null);
+			String declineCode = (err != null ? err.getDeclineCode() : null);
+			String userMsg = (err != null && err.getMessage() != null) ? err.getMessage() : e.getMessage();
+
+			org.slf4j.LoggerFactory.getLogger(getClass()).error(
+					"Stripe error creating/retrieving PI: requestId={}, status={}, code={}, declineCode={}, message={}",
+					requestId, statusCode, code, declineCode, userMsg, e);
+
 			throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_GATEWAY,
-					"stripe error: " + e.getMessage());
+					"stripe error: " + userMsg);
 		}
+	}
+
+	@Override
+	@Transactional
+	public void cancelByOwner(Long bookingId, String phone, String reason) {
+		var b = bookingRepo.findById(bookingId)
+				.orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "booking not found"));
+
+		// เช็คเจ้าของ
+		if (!accessService.normalizePhone(b.getPhone()).equals(accessService.normalizePhone(phone))) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not owner");
+		}
+
+		var now = LocalDateTime.now(clock);
+
+		// ห้ามยกเลิกหลังเริ่ม
+		if (now.isAfter(b.getTimeSlot().getStartAt())) {
+			throw new ResponseStatusException(CONFLICT, "service already started");
+		}
+
+		switch (b.getDepositStatus()) {
+		case UNPAID -> {
+			// depositService.voidDeposit(...)
+			// if (b.getPaymentRef() != null && !b.getPaymentRef().isBlank()) {
+			// depositService.voidDeposit(bookingId, "Owner-cancel: " + reason);
+			// }
+			b.setStatus(resolveStatus("CANCELED", "CANCELLED"));
+			b.setCancelReason(resolveCancelReason("OWNER_CANCEL", "CUSTOMER", "USER"));
+			b.setCanceledAt(now);
+			bookingRepo.save(b);
+		}
+		case PAID -> {
+			// นโยบายตัวอย่าง: ต้อง ≥ 120 นาทีล่วงหน้า
+			long minutesBefore = java.time.Duration.between(now, b.getTimeSlot().getStartAt()).toMinutes();
+			if (minutesBefore >= 120) {
+				// "auto-refund", "Owner-cancel: " + reason);
+				b.setStatus(resolveStatus("CANCELED", "CANCELLED"));
+				b.setCancelReason(resolveCancelReason("OWNER_CANCEL", "CUSTOMER", "USER"));
+				b.setCanceledAt(now);
+				bookingRepo.save(b);
+			} else {
+				throw new ResponseStatusException(CONFLICT, "too late to cancel; contact admin");
+			}
+		}
+		default -> throw new ResponseStatusException(CONFLICT, "unsupported deposit status: " + b.getDepositStatus());
+		}
+	}
+
+	private Booking.Status resolveStatus(String... candidates) {
+		for (String name : candidates) {
+			try {
+				return Booking.Status.valueOf(name);
+			} catch (IllegalArgumentException ignored) {
+			}
+		}
+		throw new IllegalStateException("No matching Booking.Status for " + java.util.Arrays.toString(candidates));
+	}
+
+	private Booking.CancelReason resolveCancelReason(String... candidates) {
+		for (String name : candidates) {
+			try {
+				return Booking.CancelReason.valueOf(name);
+			} catch (IllegalArgumentException ignored) {
+			}
+		}
+		// fallback: ถ้าชื่อไม่ตรงจริง ๆ ลองใช้ค่าตัวแรกของ enum เพื่อไม่ให้คอมไพล์ล้ม
+		return Booking.CancelReason.values()[0];
 	}
 
 }

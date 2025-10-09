@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 	boolean existsByTimeSlotIdAndPhone(Long timeSlotId, String phone);
@@ -31,5 +32,17 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 			    and b.depositDueAt < :now
 			""")
 	List<Booking> findExpiredUnpaid(LocalDateTime now);
+
+	@Query("""
+			  select b
+			  from Booking b
+			  join fetch b.timeSlot t
+			  join fetch t.service s
+			  where b.phone = :phone
+			  order by b.createdAt desc
+			""")
+	List<Booking> findByPhoneWithSlotAndService(@org.springframework.data.repository.query.Param("phone") String phone);
+
+	Optional<Booking> findByPaymentRef(String paymentIntentId);
 
 }
