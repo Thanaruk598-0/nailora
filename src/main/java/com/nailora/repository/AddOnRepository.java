@@ -1,5 +1,8 @@
 package com.nailora.repository;
 
-public interface AddOnRepository {
+import com.nailora.entity.AddOn;
+import org.springframework.data.jpa.repository.JpaRepository;
 
+public interface AddOnRepository extends JpaRepository<AddOn, Long> {
+    boolean existsByNameIgnoreCase(String name);
 }

@@ -95,11 +95,20 @@ public class Booking {
 
 	@PrePersist
 	void onCreate() {
-		if (createdAt == null)
-			createdAt = LocalDateTime.now();
-		if (status == null)
-			status = Status.BOOKED;
-		if (depositStatus == null)
-			depositStatus = DepositStatus.UNPAID;
+	    if (createdAt == null) createdAt = LocalDateTime.now();
+	    if (status == null) status = Status.BOOKED;
+	    if (depositStatus == null) depositStatus = DepositStatus.UNPAID;
+
+	    // ✅ กัน column not-null
+	    if (addOnPrice == null) addOnPrice = BigDecimal.ZERO;
+	    if (depositAmount == null) depositAmount = BigDecimal.ZERO;
 	}
+
+	@PreUpdate
+	void onUpdate() {
+	    // ✅ กันพลาดตอนอัปเดต
+	    if (addOnPrice == null) addOnPrice = BigDecimal.ZERO;
+	    if (depositAmount == null) depositAmount = BigDecimal.ZERO;
+	}
+
 }

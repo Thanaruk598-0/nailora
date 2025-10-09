@@ -19,7 +19,7 @@ public class TimeSlot {
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "service_id", nullable = false)
-	private ServiceItem service; //อ้างบริการ
+	private ServiceItem serviceItem; //อ้างบริการ
 
 	@Column(nullable = false)
 	private LocalDateTime startAt; //เวลาเริ่มคิว
@@ -35,5 +35,8 @@ public class TimeSlot {
 
 	@Column(length = 80)
 	private String techName; //ชื่อช่าง/ผู้ทำบริการ
+
+	@Column(nullable = false)
+	private Boolean active = true; // ใช้งานอยู่หรือไม่
 
 }

@@ -1,5 +1,10 @@
 package com.nailora.dto;
 
-public record CancelRequest() {
+import com.nailora.entity.Booking;
+import lombok.*;
 
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor @Builder
+public class CancelRequest {
+    private Booking.CancelReason reason;
 }

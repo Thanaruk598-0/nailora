@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="layout :: layout (~{::title}, ~{::main})">
+<head>
+  <title>Admin • Services & Add-ons</title>
+
+</head>
+<body>
+<main>
+	<h1 class="page-title"><span class="emoji">Nailora</span> Manage Services & Add-ons</h1>
+
+  <!-- Tab Menu -->
+  <div class="tabs">
+    <button id="tab-services" class="active">Services</button>
+    <button id="tab-addons">Add-ons</button>
+  </div>
+
+  <!-- Services Section -->
+  <section id="section-services">
+	<div class="toolbar">
+	  <button id="btnAddService" class="btn">+ Add Service</button>
+	</div>
+    <table id="tblServices" class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Duration</th>
+          <th>Price</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- Add-ons Section -->
+  <section id="section-addons" class="hidden">
+    <div class="toolbar">
+      <button id="btnAddAddon" class="btn">+ Add Add-on</button>
+    </div>
+    <table id="tblAddons" class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Price</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <!-- Modal -->
+  <section class="modal" id="modal">
+    <div class="modal-card">
+      <h3 id="modalTitle"></h3>
+      <form id="frm">
+        <input type="hidden" name="id">
+        <label>Name* <input name="name" required></label>
+        <label>Description <textarea name="description"></textarea></label>
+        <div id="fieldDuration">
+          <label>Duration (minutes)* <input name="duration" type="number" min="5" step="5"></label>
+        </div>
+        <label>Price (THB)* <input name="price" type="number" min="0"></label>
+        <div id="fieldActive" class="hidden">
+          <label><input type="checkbox" name="active"> Active</label>
+        </div>
+      </form>
+      <footer>
+        <button id="btnCancel" style="background:#aaa;" class="btn gray">Cancel</button>
+        <button id="btnSave" class="btn">Save</button>
+      </footer>
+    </div>
+  </section>
+
+  <!-- JS -->
+  <script src="/js/common.js"></script>
+  <script >
+  (function(){
+    // API endpoints
+    const API_SERVICES = '/admin/api/services';
+    const API_ADDONS   = '/admin/api/addons';
+
+    // Elements
+    const tabServices = document.querySelector('#tab-services');
+    const tabAddons = document.querySelector('#tab-addons');
+    const secServices = document.querySelector('#section-services');
+    const secAddons = document.querySelector('#section-addons');
+    const tblServices = document.querySelector('#tblServices tbody');
+    const tblAddons = document.querySelector('#tblAddons tbody');
+    const modal = document.querySelector('#modal');
+    const modalTitle = document.querySelector('#modalTitle');
+    const frm = document.querySelector('#frm');
+    const btnSave = document.querySelector('#btnSave');
+    const btnCancel = document.querySelector('#btnCancel');
+    const btnAddService = document.querySelector('#btnAddService');
+    const btnAddAddon = document.querySelector('#btnAddAddon');
+    const fieldDuration = document.querySelector('#fieldDuration');
+    const fieldActive = document.querySelector('#fieldActive');
+
+    let currentMode = 'service'; // 'service' or 'addon'
+    let dataServices = [];
+    let dataAddons = [];
+
+    // Tab switching
+    tabServices.addEventListener('click', () => {
+      tabServices.classList.add('active');
+      tabAddons.classList.remove('active');
+      secServices.classList.remove('hidden');
+      secAddons.classList.add('hidden');
+    });
+    tabAddons.addEventListener('click', () => {
+      tabAddons.classList.add('active');
+      tabServices.classList.remove('active');
+      secAddons.classList.remove('hidden');
+      secServices.classList.add('hidden');
+    });
+
+    // Modal open/close
+    const openModal = (mode, title) => {
+      currentMode = mode;
+      modalTitle.textContent = title;
+      modal.classList.add('open');
+      frm.reset();
+      frm.id.value = '';
+      if(mode==='service'){
+        fieldDuration.classList.remove('hidden');
+        fieldActive.classList.add('hidden');
+      } else {
+        fieldDuration.classList.add('hidden');
+        fieldActive.classList.remove('hidden');
+      }
+    };
+    const closeModal = () => modal.classList.remove('open');
+
+    btnCancel.addEventListener('click', closeModal);
+
+    // Add buttons
+    btnAddService.addEventListener('click', ()=>openModal('service','Add Service'));
+    btnAddAddon.addEventListener('click', ()=>openModal('addon','Add Add-on'));
+
+    // Save
+    btnSave.addEventListener('click', async () => {
+      const body = formToJson(frm);
+      if(currentMode==='service'){
+        body.duration = Number(body.duration);
+        body.price = Number(body.price);
+        if(body.id){
+          await api.put(`${API_SERVICES}/${body.id}`, body);
+        } else {
+          await api.post(API_SERVICES, body);
+        }
+        await loadServices();
+      } else {
+        body.price = Number(body.price);
+        body.active = !!body.active;
+        if(body.id){
+          await api.put(`${API_ADDONS}/${body.id}`, body);
+        } else {
+          await api.post(API_ADDONS, body);
+        }
+        await loadAddons();
+      }
+      closeModal();
+    });
+
+    // Render services
+    function renderServices(){
+      tblServices.innerHTML = dataServices.map(s => `
+        <tr data-id="${s.id}">
+          <td>${escapeHtml(s.name)}</td>
+          <td>${s.duration} min</td>
+          <td>฿ ${api.money(s.price)}</td>
+          <td>
+            <button data-act="edit">Edit</button>
+            <button data-act="delete">Delete</button>
+          </td>
+        </tr>`).join('');
+    }
+
+    // Render addons
+    function renderAddons(){
+      tblAddons.innerHTML = dataAddons.map(a => `
+        <tr data-id="${a.id}">
+          <td>${escapeHtml(a.name)}</td>
+          <td>฿ ${api.money(a.price)}</td>
+          <td>${a.active ? '<span class="badge green">Active</span>' : '<span class="badge gray">Inactive</span>'}</td>
+          <td>
+            <button data-act="edit">Edit</button>
+            <button data-act="toggle">${a.active?'Disable':'Enable'}</button>
+            <button data-act="delete">Delete</button>
+          </td>
+        </tr>`).join('');
+    }
+
+    // Table actions
+    tblServices.addEventListener('click', async (e)=>{
+      const btn = e.target.closest('button'); if(!btn) return;
+      const id = btn.closest('tr').dataset.id;
+      const item = dataServices.find(x=>x.id==id);
+      if(btn.dataset.act==='edit'){
+        openModal('service','Edit Service');
+        Object.assign(frm, {
+          id:{value:item.id},
+          name:{value:item.name},
+          description:{value:item.description},
+          duration:{value:item.duration},
+          price:{value:item.price}
+        });
+      }
+      if(btn.dataset.act==='delete'){
+        if(confirm("Delete this service?")){
+          await api.del(`${API_SERVICES}/${id}`);
+          loadServices();
+        }
+      }
+    });
+
+    tblAddons.addEventListener('click', async (e)=>{
+      const btn = e.target.closest('button'); if(!btn) return;
+      const id = btn.closest('tr').dataset.id;
+      const item = dataAddons.find(x=>x.id==id);
+      if(btn.dataset.act==='edit'){
+        openModal('addon','Edit Add-on');
+        Object.assign(frm, {
+          id:{value:item.id},
+          name:{value:item.name},
+          description:{value:item.description},
+          price:{value:item.price}
+        });
+        frm.active.checked = item.active;
+      }
+      if(btn.dataset.act==='toggle'){
+        await api.patch(`${API_ADDONS}/${id}/active?active=${!item.active}`,{});
+        loadAddons();
+      }
+      if(btn.dataset.act==='delete'){
+        if(confirm("Delete this add-on?")){
+          await api.del(`${API_ADDONS}/${id}`);
+          loadAddons();
+        }
+      }
+    });
+
+    // Loaders
+    async function loadServices(){ dataServices = await api.get(API_SERVICES); renderServices(); }
+    async function loadAddons(){ dataAddons = await api.get(API_ADDONS); renderAddons(); }
+
+    // Utils
+    function formToJson(form){ let o={}; new FormData(form).forEach((v,k)=>o[k]=v); return o; }
+    function escapeHtml(s=''){ return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+
+    // Init
+    loadServices();
+    loadAddons();
+
+  })();
+  </script>
+</main>
+</body>
+</html>
