@@ -11,6 +11,4 @@ public interface BookingService {
 	int remainingCapacity(Long slotId, LocalDateTime now);
 
 	String createStripePaymentIntent(Long bookingId);
-	
-	void cancelByOwner(Long bookingId, String phone, String reason);
 }

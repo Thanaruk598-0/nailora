@@ -5,8 +5,6 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import org.hibernate.annotations.CreationTimestamp;
-
 @Getter
 @Setter
 @NoArgsConstructor
@@ -43,7 +41,7 @@ public class Booking {
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "time_slot_id", nullable = false)
-	private TimeSlot timeSlot;
+	private TimeSlot timeSlot; 
 
 	@Column(nullable = false, length = 120)
 	@ToString.Include
@@ -60,35 +58,33 @@ public class Booking {
 	private Status status = Status.BOOKED;
 
 	@Column(nullable = false, precision = 12, scale = 2)
-	private BigDecimal servicePrice; // ราคาบริการตอนจอง (snapshot)
+	private BigDecimal servicePrice; //ราคาบริการตอนจอง (snapshot)
 
 	@Column(nullable = false, precision = 12, scale = 2)
-	private BigDecimal addOnPrice; // ราคา add-on รวม (snapshot)
+	private BigDecimal addOnPrice; //ราคา add-on รวม (snapshot)
 
 	@Column(nullable = false, precision = 12, scale = 2)
-	private BigDecimal depositAmount; // มัดจำที่ต้องจ่าย
+	private BigDecimal depositAmount; //มัดจำที่ต้องจ่าย
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20, name = "deposit_status")
 	private DepositStatus depositStatus = DepositStatus.UNPAID;
 
 	@Column(name = "deposit_due_at")
-	private LocalDateTime depositDueAt; // กำหนดเวลาชำระมัดจำ
+	private LocalDateTime depositDueAt; //กำหนดเวลาชำระมัดจำ
 
 	@Column(length = 120, name = "payment_ref")
-	private String paymentRef; // Stripe PaymentIntent id (เช่น pi_xxx)
+	private String paymentRef; //Stripe PaymentIntent id (เช่น pi_xxx)
 
-	private LocalDateTime depositPaidAt; // เวลาที่ชำระสำเร็จ
+	private LocalDateTime depositPaidAt; //เวลาที่ชำระสำเร็จ
 
 	@Column(length = 255, name = "receipt_url")
-	private String receiptUrl; // ลิงก์ใบเสร็จจาก Stripe
+	private String receiptUrl; //ลิงก์ใบเสร็จจาก Stripe
 
 	@Enumerated(EnumType.STRING)
 	@Column(length = 20)
-	private Gateway gateway = Gateway.STRIPE; // ช่องทางชำระ (ล็อกไว้ที่ STRIPE)
+	private Gateway gateway = Gateway.STRIPE; //ช่องทางชำระ (ล็อกไว้ที่ STRIPE)
 
-	@CreationTimestamp
-	@Column(name="created_at", updatable = false, nullable = false)
 	private LocalDateTime createdAt;
 
 	private LocalDateTime canceledAt;

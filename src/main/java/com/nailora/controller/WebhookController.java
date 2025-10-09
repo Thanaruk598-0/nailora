@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nailora.entity.Booking;
 import com.nailora.repository.BookingRepository;
 import com.stripe.exception.SignatureVerificationException;
+import com.stripe.exception.StripeException;
+import com.stripe.model.Charge;
 import com.stripe.model.Event;
 import com.stripe.net.Webhook;
 import lombok.RequiredArgsConstructor;
@@ -65,6 +67,8 @@ public class WebhookController {
 		}
 	}
 
+	/** --- handlers (Jackson only) --- */
+
 	private void onSucceeded(JsonNode pi) {
 		String piId = textOrNull(pi, "id");
 		String bookingIdStr = pi.path("metadata").path("bookingId").asText(null);
@@ -72,30 +76,27 @@ public class WebhookController {
 		Long bookingId = parseLong(bookingIdStr);
 
 		log.info("[stripe] succeeded for pi={}, bookingId={}", piId, bookingId);
+		if (bookingId == null)
+			return;
 
-		Optional<Booking> opt;
-		if (bookingId != null) {
-			opt = bookingRepo.findById(bookingId);
-		} else {
-			// 👇 fallback: หา booking ด้วย paymentRef
-			opt = bookingRepo.findAll().stream().filter(b -> piId.equals(b.getPaymentRef())).findFirst();
-		}
+		Optional<Booking> opt = bookingRepo.findById(bookingId);
 		if (opt.isEmpty())
 			return;
 
 		Booking b = opt.get();
 
+		// idempotent
 		if (b.getDepositStatus() == Booking.DepositStatus.PAID) {
-			log.info("[stripe] booking #{} already PAID, skip", b.getId());
+			log.info("[stripe] booking #{} already PAID, skip", bookingId);
 			return;
 		}
 
 		String receiptUrl = null;
 		if (latestChargeId != null) {
 			try {
-				com.stripe.model.Charge ch = com.stripe.model.Charge.retrieve(latestChargeId);
+				Charge ch = Charge.retrieve(latestChargeId);
 				receiptUrl = ch.getReceiptUrl();
-			} catch (com.stripe.exception.StripeException e) {
+			} catch (StripeException e) {
 				log.warn("[stripe] get receipt fail for {}: {}", latestChargeId, e.getMessage());
 			}
 		}
@@ -105,7 +106,7 @@ public class WebhookController {
 		b.setReceiptUrl(receiptUrl);
 		b.setPaymentRef(piId);
 		bookingRepo.save(b);
-		log.info("[stripe] booking #{} -> PAID", b.getId());
+		log.info("[stripe] booking #{} -> PAID", bookingId);
 	}
 
 	private void onFailed(JsonNode pi) {
@@ -137,6 +138,8 @@ public class WebhookController {
 		});
 	}
 
+	/** --- utils --- */
+	
 	private Long parseLong(String s) {
 		try {
 			return s == null ? null : Long.valueOf(s);
