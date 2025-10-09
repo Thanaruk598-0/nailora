@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout :: layout (~{::title}, ~{::head}, ~{::main})">
+<head th:fragment="head">
+  <title>Admin • Requests</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background:#fffafb; color:#444; }
+    h1 { color:#c2185b; margin-bottom:1.5rem; font-size:1.6rem; text-align:center; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      background: #fff;
+      border-radius: .8rem;
+      overflow: hidden;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+    }
+    th, td {
+      padding: .6rem;
+      border-bottom: 1px solid #f3c6d3;
+      text-align: center;
+      font-size: .9rem;
+    }
+    th { background:#f8bbd0; color:#880e4f; }
+    tr:nth-child(even) { background: #fff0f6; }
+
+    .badge { padding:.3rem .7rem; border-radius:.7rem; font-size:.8rem; }
+    .badge.new { background:#fff3cd; color:#856404; }
+    .badge.approved { background:#d1e7dd; color:#0f5132; }
+    .badge.rejected { background:#f8d7da; color:#842029; }
+
+    .btn {
+      background:#f48fb1;
+      border:none;
+      border-radius:.5rem;
+      padding:.4rem .8rem;
+      cursor:pointer;
+      color:#fff;
+      font-weight:500;
+      font-size:.85rem;
+      margin:0 .2rem;
+      transition:.3s;
+    }
+    .btn:hover { background:#c2185b; }
+    .btn.gray { background:#aaa; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>📩 Customer Requests</h1>
+
+  <table id="tblRequests">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Customer</th>
+        <th>Phone</th>
+        <th>Note</th>
+        <th>Service Price</th>
+        <th>Add-on Price</th>
+        <th>Deposit</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script src="/js/common.js"></script>
+  <script>
+    (async function(){
+      const API = "/admin/api/requests";
+      const tbody = document.querySelector("#tblRequests tbody");
+
+      async function loadRequests(){
+        const requests = await api.get(API);
+        tbody.innerHTML = requests.length ? requests.map(r => `
+          <tr data-id="${r.timeSlotId}">
+            <td>${r.timeSlotId}</td>
+            <td>${r.customerName || "-"}</td>
+            <td>${r.phone || "-"}</td>
+            <td>${r.note || "-"}</td>
+            <td>฿${Number(r.servicePrice||0).toFixed(2)}</td>
+            <td>฿${Number(r.addOnPrice||0).toFixed(2)}</td>
+            <td>฿${Number(r.depositAmount||0).toFixed(2)}</td>
+            <td>
+              <span class="badge ${r.status?.toLowerCase()||'new'}">
+                ${r.status || "NEW"}
+              </span>
+            </td>
+            <td>
+              <button class="btn" data-act="approve">Approve</button>
+              <button class="btn gray" data-act="reject">Reject</button>
+            </td>
+          </tr>
+        `).join("") : '<tr><td colspan="9">No requests found</td></tr>';
+      }
+
+      // ✅ Actions
+      tbody.addEventListener("click", async e => {
+        const btn = e.target.closest("button"); if(!btn) return;
+        const tr = btn.closest("tr");
+        const id = tr.dataset.id;
+        if(btn.dataset.act === "approve"){
+          await api.patch(`${API}/${id}/status?status=APPROVED`,{});
+        }
+        if(btn.dataset.act === "reject"){
+          await api.patch(`${API}/${id}/status?status=REJECTED`,{});
+        }
+        loadRequests();
+      });
+
+      loadRequests();
+    })();
+  </script>
+</main>
+</body>
+</html>

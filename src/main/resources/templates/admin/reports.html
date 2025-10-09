@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout :: layout (~{::title}, ~{::head}, ~{::main})">
+<head th:fragment="head">
+  <title>Admin • Reports</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+      body {
+        font-family: 'Segoe UI', sans-serif;
+        background: #fffafb;
+        color: #444;
+      }
+      h1 {
+        color: #c2185b;
+        margin-bottom: 1.5rem;
+        font-size: 1.6rem;
+        text-align: center;
+      }
+      h2 {
+        font-size: 1.2rem;
+        color: #c2185b;
+        margin-bottom: .8rem;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit,minmax(200px,1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+      .card {
+        background: #fce4ec;
+        border-radius: 1rem;
+        padding: 1rem;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+        text-align: center;
+      }
+      .card h2 { margin: 0; font-size: 1.5rem; color: #c2185b; }
+      .card span { font-size: .9rem; color: #666; }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+        background: #fff;
+        border-radius: .8rem;
+        overflow: hidden;
+      }
+      th, td {
+        padding: .6rem;
+        border-bottom: 1px solid #f3c6d3;
+        text-align: center;
+        font-size: .9rem;
+      }
+      th { background: #f8bbd0; color: #880e4f; }
+      tr:nth-child(even) { background: #fff0f6; }
+
+      section { margin-bottom: 2.5rem; }
+
+      .export-buttons { margin: 1rem 0; }
+      .export-buttons button {
+        background: #f48fb1;
+        border: none;
+        border-radius: .5rem;
+        padding: .5rem 1rem;
+        margin-right: .5rem;
+        color: #fff;
+        font-weight: 500;
+        font-size: .9rem;
+        cursor: pointer;
+        transition: .3s;
+      }
+      .export-buttons button:hover { background: #c2185b; }
+
+      /* ✅ Line chart ใหญ่ขึ้น */
+      #lineChart {
+        background: #fff;
+        padding: 1rem;
+        border-radius: .8rem;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+        width: 100%;
+        max-width: 1000px;
+        height: 500px;
+        display: block;
+        margin: 0 auto;
+      }
+
+      /* ✅ Pie chart ขนาดพอดี */
+      #pieChart {
+        background: #fff;
+        padding: 1rem;
+        border-radius: .8rem;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+        width: 100%;
+        max-width: 400px;
+        height: 300px;
+        display: block;
+        margin: 0 auto;
+      }
+  </style>
+</head>
+<body>
+<main>
+  <h1>💅 Reports Dashboard</h1>
+  <section class="cards">
+    <div class="card"><h2 id="summaryBookings">0</h2><span>Total Bookings</span></div>
+    <div class="card"><h2 id="summaryRevenue">฿0</h2><span>Total Revenue</span></div>
+    <div class="card"><h2 id="summaryCancelled">0</h2><span>Cancelled</span></div>
+  </section>
+  <section>
+    <h2>📈 Bookings & Revenue</h2>
+    <canvas id="lineChart"></canvas>
+  </section>
+  <section>
+    <h2>💖 Top Services</h2>
+    <canvas id="pieChart"></canvas>
+  </section>
+  <section>
+    <h2>📝 Recent Bookings</h2>
+    <div class="export-buttons">
+      <button id="btnExportExcel">Export Excel</button>
+      <!-- ❌ ปุ่ม Export PDF ถูกลบออก -->
+    </div>
+    <table id="tblBookings">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Customer</th>
+          <th>Phone</th>
+          <th>Service</th>
+          <th>Service Price</th>
+          <th>Add-on Price</th>
+          <th>Total</th>
+          <th>Status</th>
+          <th>Deposit</th>
+          <th>Created At</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+  <script src="/js/common.js"></script>
+  <script>
+    (async function(){
+      const bookings = await api.get("/admin/api/bookings"); // ✅ แก้ path ให้ตรงกับ backend
+      const totalBookings = bookings.length;
+      const totalRevenue = bookings.reduce((sum, b) => sum + Number(b.servicePrice||0) + Number(b.addOnPrice||0), 0);
+      const cancelled = bookings.filter(b => b.status === 'CANCELLED').length;
+
+      document.querySelector("#summaryBookings").textContent = totalBookings;
+      document.querySelector("#summaryRevenue").textContent = "฿" + totalRevenue.toFixed(2);
+      document.querySelector("#summaryCancelled").textContent = cancelled;
+
+      const tbody = document.querySelector("#tblBookings tbody");
+      tbody.innerHTML = bookings.map(b => `
+        <tr>
+          <td>${b.id}</td>
+          <td>${b.customerName}</td>
+          <td>${b.phone}</td>
+          <td>${b.timeSlot?.serviceItem?.name || '-'}</td>
+          <td>฿${Number(b.servicePrice).toFixed(2)}</td>
+          <td>฿${Number(b.addOnPrice).toFixed(2)}</td>
+          <td>฿${(Number(b.servicePrice)+Number(b.addOnPrice)).toFixed(2)}</td>
+          <td>${b.status}</td>
+          <td>${b.depositStatus}</td>
+          <td>${b.createdAt ? new Date(b.createdAt).toLocaleString() : '-'}</td>
+        </tr>
+      `).join('');
+
+      // ✅ Chart.js (Bookings + Revenue)
+      const daily = {};
+      bookings.forEach(b => {
+        const day = b.createdAt ? b.createdAt.substring(0,10) : "Unknown";
+        if (!daily[day]) daily[day] = { revenue:0, count:0 };
+        daily[day].revenue += Number(b.servicePrice||0)+Number(b.addOnPrice||0);
+        daily[day].count++;
+      });
+      const labels = Object.keys(daily).sort();
+      const revenues = labels.map(d => daily[d].revenue);
+      const counts = labels.map(d => daily[d].count);
+
+      new Chart(document.querySelector("#lineChart"), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {label:'Revenue (฿)', data:revenues, borderColor:'#c2185b', backgroundColor:'#f8bbd0', fill:true},
+            {label:'Bookings', data:counts, borderColor:'#f48fb1', backgroundColor:'#fce4ec', fill:true}
+          ]
+        }
+      });
+
+      // ✅ Pie chart (Top services)
+      const serviceSummary = {};
+      bookings.forEach(b => {
+        const key = b.timeSlot?.serviceItem?.name || "Unknown";
+        if (!serviceSummary[key]) serviceSummary[key] = 0;
+        serviceSummary[key] += Number(b.servicePrice||0);
+      });
+      new Chart(document.querySelector("#pieChart"), {
+        type: 'pie',
+        data: {
+          labels: Object.keys(serviceSummary),
+          datasets: [{ data:Object.values(serviceSummary), backgroundColor:["#c2185b","#f48fb1","#f8bbd0","#fce4ec"] }]
+        }
+      });
+
+      // ✅ Export Excel
+      document.querySelector("#btnExportExcel").addEventListener("click", () => {
+        const wb = XLSX.utils.table_to_book(document.getElementById("tblBookings"), {sheet:"Bookings"});
+        XLSX.writeFile(wb, "bookings_report.xlsx");
+      });
+    })();
+  </script>
+
+</main>
+</body>
+</html>

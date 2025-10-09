@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout :: layout (~{::title}, ~{::head}, ~{::main})">
+<head th:fragment="head">
+  <title>Admin • Bookings</title>
+  <style>
+    h1 {
+      color: #c2185b;
+      margin-bottom: 1.5rem;
+      font-size: 1.6rem;
+      text-align: center;
+    }
+    .filter-bar {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .filter-bar input, .filter-bar select {
+      padding: .5rem;
+      border-radius: .5rem;
+      border: 1px solid #ccc;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      background: #fff;
+      border-radius: .8rem;
+      overflow: hidden;
+    }
+    th, td {
+      padding: .6rem;
+      border-bottom: 1px solid #f3c6d3;
+      text-align: center;
+      font-size: .9rem;
+    }
+    th { background: #f8bbd0; color: #880e4f; }
+    tr:nth-child(even) { background: #fff0f6; }
+
+    .btn {
+      border: none;
+      padding: .4rem .8rem;
+      border-radius: .5rem;
+      cursor: pointer;
+      font-size: .85rem;
+      margin: 0 .2rem;
+      min-width: 80px;
+      transition: 0.3s;
+    }
+
+    /* กลุ่มซ้าย */
+    .btn-approve { background: #4caf50; color: #fff; }
+    .btn-cancel  { background: #f44336; color: #fff; }
+
+    /* กลุ่มขวา */
+    .btn-refund  { background: #2196f3; color: #fff; }
+    .btn-void    { background: #ff9800; color: #fff; }
+
+    /* ปุ่มเมื่อกดแล้ว */
+    .btn-active-refund { background: #0d47a1; color: #fff; }
+    .btn-active-void   { background: #e65100; color: #fff; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>📋 Manage Bookings</h1>
+
+  <!-- Filter/Search -->
+  <div class="filter-bar">
+    <input type="text" id="searchBox" placeholder="Search by name or phone">
+    <select id="statusFilter">
+      <option value="">All Status</option>
+      <option value="BOOKED">Booked</option>
+      <option value="CANCELLED">Cancelled</option>
+    </select>
+    <select id="depositFilter">
+      <option value="">Deposit Status</option>
+      <option value="UNPAID">Unpaid</option>
+      <option value="PAID">Paid</option>
+      <option value="REFUNDED">Refunded</option>
+      <option value="VOIDED">Voided</option>
+    </select>
+  </div>
+
+  <!-- Bookings Table -->
+  <table id="tblBookings">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Customer</th>
+        <th>Phone</th>
+        <th>Service</th>
+        <th>Service Price</th>
+        <th>Add-on Price</th>
+        <th>Deposit</th>
+        <th>Deposit Status</th>
+        <th>Status</th>
+        <th>Created At</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script src="/js/common.js"></script>
+  <script>
+    (async function(){
+      const API = "/admin/api/bookings";
+      let bookings = await api.get(API);
+      const tbody = document.querySelector("#tblBookings tbody");
+
+      function renderTable(data) {
+        tbody.innerHTML = data.map(b => `
+          <tr>
+            <td>${b.id}</td>
+            <td>${b.customerName}</td>
+            <td>${b.phone}</td>
+            <td>${b.timeSlot?.serviceItem?.name || '-'}</td>
+            <td>฿${Number(b.servicePrice).toFixed(2)}</td>
+            <td>฿${Number(b.addOnPrice).toFixed(2)}</td>
+            <td>฿${Number(b.depositAmount).toFixed(2)}</td>
+            <td>${b.depositStatus}</td>
+            <td style="color:${b.status==='BOOKED'?'green':'red'}">${b.status}</td>
+            <td>${b.createdAt ? new Date(b.createdAt).toLocaleString() : '-'}</td>
+            <td style="display:flex; justify-content:space-between;">
+              <div>
+                <button class="btn btn-approve" onclick="updateStatus(${b.id},'BOOKED')">Approve</button>
+                <button class="btn btn-cancel" onclick="updateStatus(${b.id},'CANCELLED')">Cancel</button>
+              </div>
+              <div>
+                <button class="btn ${b.depositStatus==='REFUNDED'?'btn-active-refund':'btn-refund'}" 
+                        onclick="depositAction(${b.id},'refund')">
+                  ${b.depositStatus==='REFUNDED'?'Refunded':'Refund'}
+                </button>
+                <button class="btn ${b.depositStatus==='VOIDED'?'btn-active-void':'btn-void'}" 
+                        onclick="depositAction(${b.id},'void')">
+                  ${b.depositStatus==='VOIDED'?'Voided':'Void'}
+                </button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      renderTable(bookings);
+
+      // Filter by status/deposit
+      document.getElementById("statusFilter").addEventListener("change", e => {
+        const val = e.target.value;
+        renderTable(val ? bookings.filter(b => b.status===val) : bookings);
+      });
+      document.getElementById("depositFilter").addEventListener("change", e => {
+        const val = e.target.value;
+        renderTable(val ? bookings.filter(b => b.depositStatus===val) : bookings);
+      });
+
+      // Search box
+      document.getElementById("searchBox").addEventListener("input", e => {
+        const val = e.target.value.toLowerCase();
+        renderTable(bookings.filter(b => 
+          (b.customerName||'').toLowerCase().includes(val) || 
+          (b.phone||'').includes(val)
+        ));
+      });
+
+      // Update status API
+      window.updateStatus = async (id, status) => {
+        try {
+          const updated = await api.patch(`${API}/${id}/status?status=${status}`);
+          bookings = bookings.map(b => b.id===id ? updated : b);
+          renderTable(bookings);
+        } catch (e) {
+          alert("Failed to update status");
+        }
+      };
+
+      // Deposit action API
+      window.depositAction = async (id, action) => {
+        try {
+          let endpoint = action==="refund"?`${API}/${id}/deposit/refund`:`${API}/${id}/deposit/void`;
+          const updated = await api.put(endpoint,{});
+          bookings = bookings.map(b=>b.id===id?updated:b);
+          renderTable(bookings);
+        } catch (e) {
+          alert("Failed to update deposit");
+        }
+      };
+    })();
+  </script>
+</main>
+</body>
+</html>

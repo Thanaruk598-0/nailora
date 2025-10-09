@@ -7,9 +7,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Controller
 @RequestMapping("/admin")
 public class AdminPageController {
+
     @GetMapping("/services")
     public String servicesPage() {
-        return "admin/services"; // ไม่มี .html ต่อท้าย
+        return "admin/services";
+    }
+
+    @GetMapping("/reports")
+    public String reportsPage() {
+        return "admin/reports";
+    }
+
+    @GetMapping("/requests")
+    public String requestsPage() {
+        return "admin/requests";
+    }
+    @GetMapping("/bookings")
+    public String bookingsPage() {
+        return "admin/bookings"; // 👉 templates/admin/bookings.html
     }
 }
-

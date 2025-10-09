@@ -1,52 +1,125 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" th:replace="layout :: layout (~{::title}, ~{::main})">
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout :: layout (~{::title}, ~{}, ~{::main})">
 <head>
   <title>Admin • Services & Add-ons</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; }
 
+    /* Navbar */
+    .navbar { display:flex; background:#222; padding:1rem 2rem; gap:2rem; }
+    .navbar a { color:#fff; text-decoration:none; font-weight:500; transition:.2s; }
+    .navbar a:hover { color:#f1a7c5; }
+    .navbar a.active { color:#d63384; font-weight:700; }
+
+    h1 { color:#d63384; margin:1rem 2rem; }
+
+    .tabs { display:flex; gap:1rem; margin:0 2rem 1rem; }
+    .tabs button{
+      padding:.6rem 1.2rem; border:none; background:#f8d7e8; color:#333;
+      font-weight:600; border-radius:1rem; cursor:pointer; transition:.2s;
+    }
+    .tabs button:hover{ background:#f1a7c5; color:#fff; }
+    .tabs button.active{ background:#d63384; color:#fff; }
+
+    .toolbar { margin: 0 2rem 1rem; display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
+    .btn{
+      background:#f1a7c5; border:none; border-radius:.5rem; padding:.45rem .8rem;
+      cursor:pointer; color:#fff; font-weight:600; transition:.2s;
+    }
+    .btn:hover{ background:#d63384; }
+    .btn.gray{ background:#9aa0a6; }
+    .input, .select{
+      padding:.45rem .6rem; border-radius:.55rem; border:1px solid #e8c2d2; min-width:220px;
+    }
+
+    table{ width:calc(100% - 4rem); margin:0 2rem; border-collapse:collapse; background:#fff; border-radius:.8rem; overflow:hidden; }
+    th, td{ padding:.75rem; border-bottom:1px solid #f3c6d3; text-align:center; font-size:.95rem; }
+    th{ background:#f8d7e8; color:#d63384; user-select:none; cursor:default; }
+    th.sortable{ cursor:pointer; }
+    tr:nth-child(even){ background:#fff7fb; }
+
+    .badge{ padding:.25rem .6rem; border-radius:.7rem; font-size:.8rem; }
+    .badge.green{ background:#d1e7dd; color:#0f5132; }
+    .badge.gray{ background:#e2e3e5; color:#41464b; }
+
+    .empty{ text-align:center; padding:2rem; color:#999; }
+
+    .modal{
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.5);
+      align-items:center; justify-content:center;
+    }
+    .modal.open{ display:flex; }
+    .modal-card{
+      background:#fff; border-radius:1rem; padding:1.25rem 1.5rem; min-width:360px; max-width:520px;
+      box-shadow:0 4px 12px rgba(0,0,0,.2); border:2px solid #f8d7e8;
+    }
+    .modal-card h3{ margin:.2rem 0 1rem; color:#d63384; }
+    .modal-card label{ display:block; margin:.5rem 0; }
+    .modal-card input, .modal-card textarea{
+      width:100%; padding:.5rem .6rem; margin-top:.25rem; border:1px solid #f3c6d3; border-radius:.5rem;
+    }
+    .modal-card footer{ display:flex; justify-content:flex-end; gap:.6rem; margin-top:1rem; }
+    .hidden{ display:none; }
+  </style>
 </head>
 <body>
-<main>
-	<h1 class="page-title"><span class="emoji">Nailora</span> Manage Services & Add-ons</h1>
+<nav class="navbar">
+  <a href="/admin/services" class="active">Services</a>
+  <a href="/admin/reports">Reports</a>
+  <a href="/admin/requests">Requests</a>
+  <a href="/admin/bookings">Bookings</a>
+</nav>
 
-  <!-- Tab Menu -->
+<main>
+  <h1>Nailora Manage Services & Add-ons</h1>
+
+  <!-- Tabs -->
   <div class="tabs">
     <button id="tab-services" class="active">Services</button>
     <button id="tab-addons">Add-ons</button>
   </div>
 
-  <!-- Services Section -->
+  <!-- Services -->
   <section id="section-services">
-	<div class="toolbar">
-	  <button id="btnAddService" class="btn">+ Add Service</button>
-	</div>
+    <div class="toolbar">
+      <button id="btnAddService" class="btn">+ Add Service</button>
+      <input id="searchService" class="input" placeholder="Search service by name">
+    </div>
     <table id="tblServices" class="table">
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Duration</th>
-          <th>Price</th>
+          <th class="sortable" data-sort="name">Name</th>
+          <th class="sortable" data-sort="duration">Duration</th>
+          <th class="sortable" data-sort="price">Price</th>
           <th>Actions</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody><tr><td class="empty" colspan="4">Loading…</td></tr></tbody>
     </table>
   </section>
 
-  <!-- Add-ons Section -->
+  <!-- Add-ons -->
   <section id="section-addons" class="hidden">
     <div class="toolbar">
       <button id="btnAddAddon" class="btn">+ Add Add-on</button>
+      <input id="searchAddon" class="input" placeholder="Search add-on by name">
+      <select id="activeFilter" class="select">
+        <option value="">All Status</option>
+        <option value="true">Active</option>
+        <option value="false">Inactive</option>
+      </select>
     </div>
     <table id="tblAddons" class="table">
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Price</th>
+          <th class="sortable" data-sort="name">Name</th>
+          <th class="sortable" data-sort="price">Price</th>
           <th>Status</th>
           <th>Actions</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody><tr><td class="empty" colspan="4">Loading…</td></tr></tbody>
     </table>
   </section>
 
@@ -54,206 +127,262 @@
   <section class="modal" id="modal">
     <div class="modal-card">
       <h3 id="modalTitle"></h3>
-      <form id="frm">
+      <form id="frm" novalidate>
         <input type="hidden" name="id">
-        <label>Name* <input name="name" required></label>
-        <label>Description <textarea name="description"></textarea></label>
+        <label>Name* <input name="name" required maxlength="120"></label>
+        <label>Description <textarea name="description" rows="3" maxlength="500"></textarea></label>
         <div id="fieldDuration">
-          <label>Duration (minutes)* <input name="duration" type="number" min="5" step="5"></label>
+          <label>Duration (minutes)* 
+            <input name="duration" type="number" min="5" step="5" inputmode="numeric" required>
+          </label>
         </div>
-        <label>Price (THB)* <input name="price" type="number" min="0"></label>
+        <label>Price (THB)* 
+          <input name="price" type="number" min="0" step="0.01" inputmode="decimal" required>
+        </label>
         <div id="fieldActive" class="hidden">
           <label><input type="checkbox" name="active"> Active</label>
         </div>
       </form>
       <footer>
-        <button id="btnCancel" style="background:#aaa;" class="btn gray">Cancel</button>
-        <button id="btnSave" class="btn">Save</button>
+        <button id="btnCancel" class="btn gray" type="button">Cancel</button>
+        <button id="btnSave" class="btn" type="button">Save</button>
       </footer>
     </div>
   </section>
 
-  <!-- JS -->
   <script src="/js/common.js"></script>
-  <script >
+  <script>
   (function(){
-    // API endpoints
     const API_SERVICES = '/admin/api/services';
     const API_ADDONS   = '/admin/api/addons';
 
-    // Elements
-    const tabServices = document.querySelector('#tab-services');
-    const tabAddons = document.querySelector('#tab-addons');
-    const secServices = document.querySelector('#section-services');
-    const secAddons = document.querySelector('#section-addons');
-    const tblServices = document.querySelector('#tblServices tbody');
-    const tblAddons = document.querySelector('#tblAddons tbody');
-    const modal = document.querySelector('#modal');
-    const modalTitle = document.querySelector('#modalTitle');
-    const frm = document.querySelector('#frm');
-    const btnSave = document.querySelector('#btnSave');
-    const btnCancel = document.querySelector('#btnCancel');
-    const btnAddService = document.querySelector('#btnAddService');
-    const btnAddAddon = document.querySelector('#btnAddAddon');
-    const fieldDuration = document.querySelector('#fieldDuration');
-    const fieldActive = document.querySelector('#fieldActive');
+    const tabServices   = qs('#tab-services');
+    const tabAddons     = qs('#tab-addons');
+    const secServices   = qs('#section-services');
+    const secAddons     = qs('#section-addons');
 
-    let currentMode = 'service'; // 'service' or 'addon'
+    const tblServicesTB = qs('#tblServices tbody');
+    const tblAddonsTB   = qs('#tblAddons tbody');
+
+    const modal       = qs('#modal');
+    const modalTitle  = qs('#modalTitle');
+    const frm         = qs('#frm');
+    const btnSave     = qs('#btnSave');
+    const btnCancel   = qs('#btnCancel');
+
+    const btnAddService = qs('#btnAddService');
+    const btnAddAddon   = qs('#btnAddAddon');
+
+    const fieldDuration = qs('#fieldDuration');
+    const fieldActive   = qs('#fieldActive');
+
+    const searchService = qs('#searchService');
+    const searchAddon   = qs('#searchAddon');
+    const activeFilter  = qs('#activeFilter');
+
+    let currentMode = 'service';
     let dataServices = [];
-    let dataAddons = [];
+    let dataAddons   = [];
+    let sortState = { services: {key:'',dir:1}, addons: {key:'',dir:1} };
 
-    // Tab switching
-    tabServices.addEventListener('click', () => {
-      tabServices.classList.add('active');
-      tabAddons.classList.remove('active');
-      secServices.classList.remove('hidden');
-      secAddons.classList.add('hidden');
-    });
-    tabAddons.addEventListener('click', () => {
-      tabAddons.classList.add('active');
-      tabServices.classList.remove('active');
-      secAddons.classList.remove('hidden');
-      secServices.classList.add('hidden');
-    });
+    // ------ helpers ------
+    function qs(s, el=document){ return el.querySelector(s); }
+    function qsa(s, el=document){ return [...el.querySelectorAll(s)]; }
+    const money = (v) => api.money(Number(v ?? 0));
 
-    // Modal open/close
-    const openModal = (mode, title) => {
+    function openModal(mode, title){
       currentMode = mode;
       modalTitle.textContent = title;
       modal.classList.add('open');
       frm.reset();
-      frm.id.value = '';
-      if(mode==='service'){
-        fieldDuration.classList.remove('hidden');
-        fieldActive.classList.add('hidden');
-      } else {
-        fieldDuration.classList.add('hidden');
-        fieldActive.classList.remove('hidden');
-      }
-    };
+      frm.elements['id'].value = '';
+      if (mode === 'service'){ fieldDuration.classList.remove('hidden'); fieldActive.classList.add('hidden'); }
+      else { fieldDuration.classList.add('hidden'); fieldActive.classList.remove('hidden'); }
+    }
     const closeModal = () => modal.classList.remove('open');
-
     btnCancel.addEventListener('click', closeModal);
 
-    // Add buttons
-    btnAddService.addEventListener('click', ()=>openModal('service','Add Service'));
-    btnAddAddon.addEventListener('click', ()=>openModal('addon','Add Add-on'));
-
-    // Save
-    btnSave.addEventListener('click', async () => {
-      const body = formToJson(frm);
-      if(currentMode==='service'){
-        body.duration = Number(body.duration);
-        body.price = Number(body.price);
-        if(body.id){
-          await api.put(`${API_SERVICES}/${body.id}`, body);
-        } else {
-          await api.post(API_SERVICES, body);
-        }
-        await loadServices();
-      } else {
-        body.price = Number(body.price);
-        body.active = !!body.active;
-        if(body.id){
-          await api.put(`${API_ADDONS}/${body.id}`, body);
-        } else {
-          await api.post(API_ADDONS, body);
-        }
-        await loadAddons();
-      }
-      closeModal();
+    tabServices.addEventListener('click', () => {
+      tabServices.classList.add('active'); tabAddons.classList.remove('active');
+      secServices.classList.remove('hidden'); secAddons.classList.add('hidden');
+    });
+    tabAddons.addEventListener('click', () => {
+      tabAddons.classList.add('active'); tabServices.classList.remove('active');
+      secAddons.classList.remove('hidden'); secServices.classList.add('hidden');
     });
 
-    // Render services
-    function renderServices(){
-      tblServices.innerHTML = dataServices.map(s => `
-        <tr data-id="${s.id}">
-          <td>${escapeHtml(s.name)}</td>
-          <td>${s.duration} min</td>
-          <td>฿ ${api.money(s.price)}</td>
-          <td>
-            <button data-act="edit">Edit</button>
-            <button data-act="delete">Delete</button>
-          </td>
-        </tr>`).join('');
-    }
+    btnAddService.addEventListener('click', ()=>openModal('service','Add Service'));
+    btnAddAddon  .addEventListener('click', ()=>openModal('addon','Add Add-on'));
 
-    // Render addons
-    function renderAddons(){
-      tblAddons.innerHTML = dataAddons.map(a => `
-        <tr data-id="${a.id}">
-          <td>${escapeHtml(a.name)}</td>
-          <td>฿ ${api.money(a.price)}</td>
-          <td>${a.active ? '<span class="badge green">Active</span>' : '<span class="badge gray">Inactive</span>'}</td>
-          <td>
-            <button data-act="edit">Edit</button>
-            <button data-act="toggle">${a.active?'Disable':'Enable'}</button>
-            <button data-act="delete">Delete</button>
-          </td>
-        </tr>`).join('');
-    }
+    // ------ Save ------
+    btnSave.addEventListener('click', async () => {
+      const f = formToJson(frm);
+      if (!f.name?.trim()){ alert('Name is required'); return; }
+      const price = Number(f.price);
+      if (Number.isNaN(price) || price < 0){ alert('Price must be a number ≥ 0'); return; }
 
-    // Table actions
-    tblServices.addEventListener('click', async (e)=>{
-      const btn = e.target.closest('button'); if(!btn) return;
-      const id = btn.closest('tr').dataset.id;
-      const item = dataServices.find(x=>x.id==id);
-      if(btn.dataset.act==='edit'){
-        openModal('service','Edit Service');
-        Object.assign(frm, {
-          id:{value:item.id},
-          name:{value:item.name},
-          description:{value:item.description},
-          duration:{value:item.duration},
-          price:{value:item.price}
+      try{
+        if (currentMode === 'service'){
+          const payload = {
+            id: f.id || undefined,
+            name: f.name.trim(),
+            durationMin: Number(f.duration || 0),
+            price: price,
+            depositMin: 0,
+            active: true
+          };
+          if (payload.id) await api.put(`${API_SERVICES}/${payload.id}`, payload);
+          else            await api.post(API_SERVICES, payload);
+          await loadServices();
+        }else{
+          const payload = {
+            id: f.id || undefined,
+            name: f.name.trim(),
+            price: price,
+            extraMinutes: 0,
+            extraPrice: 0,
+            active: !!f.active
+          };
+          if (payload.id) await api.put(`${API_ADDONS}/${payload.id}`, payload);
+          else            await api.post(API_ADDONS, payload);
+          await loadAddons();
+        }
+        closeModal();
+      }catch(err){
+        alert(err?.message || 'Save failed');
+      }
+    });
+
+    // Render Services
+    function renderServices(list = dataServices){
+      const q = (searchService.value || '').toLowerCase();
+      let rows = list.filter(s => (s.name||'').toLowerCase().includes(q));
+      const {key, dir} = sortState.services;
+      if (key){
+        rows = rows.slice().sort((a,b)=>{
+          const av = key==='price' ? Number(a.price||0) : key==='duration' ? Number(a.durationMin||a.duration||0) : (a.name||'');
+          const bv = key==='price' ? Number(b.price||0) : key==='duration' ? Number(b.durationMin||b.duration||0) : (b.name||'');
+          return (av>bv?1:av<bv?-1:0) * dir;
         });
       }
-      if(btn.dataset.act==='delete'){
-        if(confirm("Delete this service?")){
+      tblServicesTB.innerHTML = rows.length ? rows.map(s => `
+        <tr data-id="${s.id}">
+          <td>${escapeHtml(s.name)}</td>
+          <td>${Number(s.durationMin ?? s.duration ?? 0)} min</td>
+          <td>฿ ${money(s.price)}</td>
+          <td>
+            <button data-act="edit" class="btn">Edit</button>
+            <button data-act="delete" class="btn gray">Delete</button>
+          </td>
+        </tr>
+      `).join('') : `<tr><td class="empty" colspan="4">No data</td></tr>`;
+    }
+
+    // Render Addons
+    function renderAddons(list = dataAddons){
+      const q = (searchAddon.value || '').toLowerCase();
+      let rows = list.filter(a => (a.name||'').toLowerCase().includes(q));
+      const af = activeFilter.value;
+      if (af !== '') rows = rows.filter(a => String(!!a.active) === af);
+      const {key, dir} = sortState.addons;
+      if (key){
+        rows = rows.slice().sort((a,b)=>{
+          const av = key==='price' ? Number(a.price||0) : (a.name||'');
+          const bv = key==='price' ? Number(b.price||0) : (b.name||'');
+          return (av>bv?1:av<bv?-1:0) * dir;
+        });
+      }
+      tblAddonsTB.innerHTML = rows.length ? rows.map(a => `
+        <tr data-id="${a.id}">
+          <td>${escapeHtml(a.name)}</td>
+          <td>฿ ${money(a.price)}</td>
+          <td>${a.active ? '<span class="badge green">Active</span>' : '<span class="badge gray">Inactive</span>'}</td>
+          <td style="display:flex; gap:.4rem; justify-content:center;">
+            <button data-act="edit" class="btn">Edit</button>
+            <button data-act="toggle" class="btn">${a.active?'Disable':'Enable'}</button>
+            <button data-act="delete" class="btn gray">Delete</button>
+          </td>
+        </tr>
+      `).join('') : `<tr><td class="empty" colspan="4">No data</td></tr>`;
+    }
+
+    // Actions
+    qs('#tblServices').addEventListener('click', async (e)=>{
+      const btn = e.target.closest('button'); if(!btn) return;
+      const id  = btn.closest('tr').dataset.id;
+      const it  = dataServices.find(x => String(x.id) === String(id));
+      if (btn.dataset.act === 'edit'){
+        openModal('service','Edit Service');
+        frm.elements['id'].value = it.id ?? '';
+        frm.elements['name'].value = it.name ?? '';
+        frm.elements['description'].value = it.description ?? '';
+        frm.elements['duration'].value = it.durationMin ?? it.duration ?? 0;
+        frm.elements['price'].value = Number(it.price ?? 0);
+      }
+      if (btn.dataset.act === 'delete'){
+        if (confirm('Delete this service?')){
           await api.del(`${API_SERVICES}/${id}`);
           loadServices();
         }
       }
     });
 
-    tblAddons.addEventListener('click', async (e)=>{
+    qs('#tblAddons').addEventListener('click', async (e)=>{
       const btn = e.target.closest('button'); if(!btn) return;
-      const id = btn.closest('tr').dataset.id;
-      const item = dataAddons.find(x=>x.id==id);
-      if(btn.dataset.act==='edit'){
+      const id  = btn.closest('tr').dataset.id;
+      const it  = dataAddons.find(x => String(x.id) === String(id));
+      if (btn.dataset.act === 'edit'){
         openModal('addon','Edit Add-on');
-        Object.assign(frm, {
-          id:{value:item.id},
-          name:{value:item.name},
-          description:{value:item.description},
-          price:{value:item.price}
-        });
-        frm.active.checked = item.active;
+        frm.elements['id'].value = it.id ?? '';
+        frm.elements['name'].value = it.name ?? '';
+        frm.elements['description'].value = it.description ?? '';
+        frm.elements['price'].value = Number(it.price ?? 0);
+        frm.elements['active'].checked = !!it.active;
       }
-      if(btn.dataset.act==='toggle'){
-        await api.patch(`${API_ADDONS}/${id}/active?active=${!item.active}`,{});
+      if (btn.dataset.act === 'toggle'){
+        await api.patch(`${API_ADDONS}/${id}/active?active=${!it.active}`, {});
         loadAddons();
       }
-      if(btn.dataset.act==='delete'){
-        if(confirm("Delete this add-on?")){
+      if (btn.dataset.act === 'delete'){
+        if (confirm('Delete this add-on?')){
           await api.del(`${API_ADDONS}/${id}`);
           loadAddons();
         }
       }
     });
 
-    // Loaders
-    async function loadServices(){ dataServices = await api.get(API_SERVICES); renderServices(); }
-    async function loadAddons(){ dataAddons = await api.get(API_ADDONS); renderAddons(); }
+    // sorting
+    qsa('#tblServices th.sortable').forEach(th=>{
+      th.addEventListener('click', ()=>{
+        const key = th.dataset.sort;
+        const st = sortState.services;
+        st.dir = (st.key === key ? -st.dir : 1);
+        st.key = key;
+        renderServices();
+      });
+    });
+    qsa('#tblAddons th.sortable').forEach(th=>{
+      th.addEventListener('click', ()=>{
+        const key = th.dataset.sort;
+        const st = sortState.addons;
+        st.dir = (st.key === key ? -st.dir : 1);
+        st.key = key;
+        renderAddons();
+      });
+    });
 
-    // Utils
-    function formToJson(form){ let o={}; new FormData(form).forEach((v,k)=>o[k]=v); return o; }
+    searchService.addEventListener('input', ()=>renderServices());
+    searchAddon  .addEventListener('input', ()=>renderAddons());
+    activeFilter .addEventListener('change', ()=>renderAddons());
+
+    async function loadServices(){ dataServices = await api.get(API_SERVICES); renderServices(); }
+    async function loadAddons(){  dataAddons   = await api.get(API_ADDONS);   renderAddons();  }
+
+    function formToJson(form){ const o={}; new FormData(form).forEach((v,k)=>o[k]=v); return o; }
     function escapeHtml(s=''){ return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
 
-    // Init
     loadServices();
     loadAddons();
-
   })();
   </script>
 </main>
