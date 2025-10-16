@@ -1,7 +1,7 @@
 # ---- Build outputs
 target/
 
-# ---- Maven wrapper/cache (ไม่จำเป็นต่อการ build ใน container ของเรา)
+# ---- Maven wrapper/cache
 .mvn/
 mvnw
 mvnw.cmd
@@ -28,10 +28,12 @@ tmp/
 .git/
 .gitignore
 
-# ---- Misc (แล้วแต่โปรเจกต์)
+# ---- Misc
 *.env
 **/*.pem
 **/*.key
 docker-compose*.yml
 
+# ---- Secrets (สำคัญ)
 application-secret.properties
+src/main/resources/application-secret.properties
