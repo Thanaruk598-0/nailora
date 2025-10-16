@@ -1,5 +1,16 @@
 package com.nailora.service;
 
-public class BookingService {
+import java.time.LocalDateTime;
 
+import com.nailora.dto.BookingRequest;
+
+public interface BookingService {
+
+	Long createBooking(BookingRequest req);
+
+	int remainingCapacity(Long slotId, LocalDateTime now);
+
+	String createStripePaymentIntent(Long bookingId);
+	
+	void cancelByOwner(Long bookingId, String phone, String reason);
 }

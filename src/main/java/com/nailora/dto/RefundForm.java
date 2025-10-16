@@ -1,5 +1,12 @@
 package com.nailora.dto;
 
-public record RefundForm() {
+import lombok.*;
 
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class RefundForm {
+	private String paymentRef;
 }

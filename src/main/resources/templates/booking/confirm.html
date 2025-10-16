@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body style="font-family:'Segoe UI',sans-serif; background:#fff6f9; color:#444; margin:0; padding:1rem;">
+
+<div style="max-width:650px; margin:0 auto;">
+
+  <h1 style="text-align:center; color:#d81b60; margin-bottom:2rem; font-size:2rem;">💅 ยืนยันการจอง</h1>
+
+  <!-- ข้อมูลบริการ -->
+  <div style="background:#ffffff; border-radius:1rem; padding:1.2rem 1.5rem; margin-bottom:1.5rem; box-shadow:0 4px 15px rgba(0,0,0,0.08); border-left:5px solid #d81b60;">
+    <p><strong>บริการ:</strong> <span th:text="${bookingSummary.serviceName}">-</span></p>
+    <p><strong>ช่าง:</strong> <span th:text="${bookingSummary.techName}">-</span></p>
+    <p><strong>เวลา:</strong> <span th:text="${#temporals.format(bookingSummary.startAt,'dd MMM HH:mm')}">-</span></p>
+  </div>
+
+  <!-- Add-on -->
+  <h3 style="color:#d81b60; margin-bottom:.5rem;">ตัวเลือกเสริม (Add-on)</h3>
+  <div style="background:#fff0f6; border-radius:.8rem; padding:1rem; margin-bottom:1.5rem; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+    <label th:each="a : ${addOns}" 
+           style="display:flex; justify-content:space-between; align-items:center; padding:.5rem 0.8rem; margin-bottom:.5rem; background:#fff; border-radius:.5rem; cursor:pointer; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <span>
+        <input type="checkbox" class="addOnCheck"
+               th:attr="data-id=${a.get('id')},data-price=${a.get('extraPrice')}" style="margin-right:.5rem;">
+        <span th:text="${a.get('name')}">เพ้นต์ลาย</span>
+      </span>
+      <span style="font-weight:600; color:#d81b60;">
+        <span th:text="${#numbers.formatDecimal(a.get('extraPrice'),1,'COMMA',2,'POINT')}">0.00</span> บาท
+      </span>
+    </label>
+    <div th:if="${#lists.isEmpty(addOns)}" style="text-align:center; color:#999;">— ไม่มีตัวเลือกเสริม —</div>
+  </div>
+
+  <!-- สรุปราคา -->
+  <h3 style="color:#d81b60; margin-bottom:.5rem;">สรุปราคา</h3>
+  <table style="width:100%; border-collapse:collapse; margin-bottom:1.5rem; background:#fff; border-radius:.8rem; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+    <tr style="border-bottom:1px solid #f3c6d3;"><td style="padding:.8rem;">ราคาบริการ</td><td id="priceService" style="padding:.8rem; text-align:right;">—</td></tr>
+    <tr style="border-bottom:1px solid #f3c6d3;"><td style="padding:.8rem;">ราคา Add-on</td><td id="priceAddOn" style="padding:.8rem; text-align:right;">—</td></tr>
+    <tr style="border-bottom:1px solid #f3c6d3;"><td style="padding:.8rem;"><b>รวม</b></td><td id="priceTotal" style="padding:.8rem; text-align:right;"><b>—</b></td></tr>
+    <tr><td style="padding:.8rem;">มัดจำที่ต้องชำระ</td><td id="priceDeposit" style="padding:.8rem; text-align:right;"><b th:text="${bookingSummary.depositAmount}">0.00</b></td></tr>
+  </table>
+
+  <!-- ข้อมูลผู้จอง -->
+  <h3 style="color:#d81b60; margin-bottom:.5rem;">ข้อมูลผู้จอง</h3>
+  <form id="f" onsubmit="return false;" style="display:flex; flex-direction:column; gap:.6rem; margin-bottom:1.5rem;">
+    <input name="customerName" placeholder="ชื่อ-สกุล" required style="padding:.6rem; border-radius:.5rem; border:1px solid #ccc;">
+    <input name="phone" placeholder="เบอร์โทร" required style="padding:.6rem; border-radius:.5rem; border:1px solid #ccc;">
+    <input name="note" placeholder="โน้ต" style="padding:.6rem; border-radius:.5rem; border:1px solid #ccc;">
+    <button id="btnCreate" type="button" 
+            style="background:#d81b60; color:#fff; border:none; border-radius:.6rem; padding:.7rem; font-weight:600; font-size:1rem; cursor:pointer; transition:.3s;">
+      ยืนยันและไปชำระ
+    </button>
+  </form>
+
+  <!-- ส่วนชำระเงิน -->
+  <div id="pay" style="display:none; background:#fff0f6; padding:1.2rem; border-radius:1rem; box-shadow:0 2px 10px rgba(0,0,0,0.06); margin-bottom:1rem;">
+    <div id="card-element" style="margin-bottom:1rem;"></div>
+    <button id="btnPay" type="button" 
+            style="background:#d81b60; color:#fff; border:none; border-radius:.6rem; padding:.7rem; font-weight:600; font-size:1rem; cursor:pointer; width:100%; transition:.3s;">
+      ชำระมัดจำ
+    </button>
+    <div id="msg" style="margin-top:.5rem; color:#444;"></div>
+  </div>
+
+  <!-- props ฝัง data-* -->
+  <div id="props"
+       th:data-slotid="${slotId}"
+       th:data-serviceid="${serviceId}"
+       th:data-publishablekey="${@environment.getProperty('stripe.publishable.key')}"></div>
+
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script src="/js/confirm.js"></script>
+</body>
+</html>
+	

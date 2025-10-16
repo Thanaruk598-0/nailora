@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="th"
+      th:replace="~{layout :: layout(~{::section})}">
+<section>
+
+  <div class="text-center hero-section py-5">
+    <div class="container py-4">
+      <h1 class="display-5 fw-bold mb-3">
+        ยินดีต้อนรับสู่ <span class="brand-text">NAILORA</span> 💅
+      </h1>
+      <p class="lead text-muted mb-4">
+        สัมผัสประสบการณ์จองคิวทำเล็บสุดหรูในไม่กี่ขั้นตอน<br>
+        เลือกบริการ → เลือกช่วงเวลา → ชำระมัดจำ → พร้อมสวย!
+      </p>
+      <a href="/booking/services" class="btn btn-pink btn-lg shadow-sm px-4 py-2">
+        เริ่มจองคิวเลย
+      </a>
+    </div>
+  </div>
+
+  <div class="container text-center my-5">
+    <div class="row g-4 justify-content-center">
+      <div class="col-md-4">
+        <div class="card feature-card h-100 border-0 shadow-sm">
+          <div class="card-body">
+            <div class="emoji">💖</div>
+            <h5 class="card-title mt-2 fw-semibold text-pink">เลือกบริการ</h5>
+            <p class="text-muted">บริการทำเล็บและสปาที่คุณชื่นชอบในราคาสุดพิเศษ</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card feature-card h-100 border-0 shadow-sm">
+          <div class="card-body">
+            <div class="emoji">🕒</div>
+            <h5 class="card-title mt-2 fw-semibold text-pink">เลือกช่วงเวลา</h5>
+            <p class="text-muted">เลือกรอบเวลาที่สะดวก พร้อมดูสถานะช่างว่างแบบเรียลไทม์</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card feature-card h-100 border-0 shadow-sm">
+          <div class="card-body">
+            <div class="emoji">💳</div>
+            <h5 class="card-title mt-2 fw-semibold text-pink">ชำระมัดจำ</h5>
+            <p class="text-muted">ปลอดภัยด้วย Stripe ระบบชำระเงินระดับโลก</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* -------- NAILORA THEME -------- */
+    :root {
+      --pink-500: #d63384;
+      --pink-400: #e64997;
+      --pink-100: #fce4ef;
+    }
+
+    .text-pink { color: var(--pink-500); }
+
+    .btn-pink {
+      background-color: var(--pink-500);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      transition: all 0.25s ease;
+    }
+
+    .btn-pink:hover {
+      background-color: var(--pink-400);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(214, 51, 132, 0.3);
+    }
+
+    .hero-section {
+      background: linear-gradient(180deg, #fff, var(--pink-100));
+      border-radius: 1rem;
+      margin-top: 2rem;
+    }
+
+    .brand-text {
+      color: var(--pink-500);
+      font-weight: 700;
+    }
+
+    .feature-card {
+      border-radius: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .feature-card .emoji {
+      font-size: 2rem;
+      margin-bottom: .5rem;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    }
+
+    @media (max-width: 576px) {
+      .hero-section h1 {
+        font-size: 1.8rem;
+      }
+      .hero-section p {
+        font-size: 1rem;
+      }
+    }
+  </style>
+
+</section>
+</html>

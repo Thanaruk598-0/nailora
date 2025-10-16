@@ -1,5 +1,5 @@
 package com.nailora.dto;
 
-public record CancelRequest() {
+public record CancelRequest(String phone, String reason) {
 
 }

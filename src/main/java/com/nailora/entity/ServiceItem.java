@@ -10,7 +10,12 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "service_item")
+@Table(
+  name = "service_item",
+  uniqueConstraints = {
+    @UniqueConstraint(name = "uq_service_item_name_ci", columnNames = "name")
+  }
+)
 public class ServiceItem {
 
 	@Id

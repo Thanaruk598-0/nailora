@@ -1,0 +1,86 @@
+<!-- templates/admin/services.html -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="th"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{::section})}">
+<section>
+  <div class="container my-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h1 class="h4 mb-0">บริการทั้งหมด</h1>
+      <a class="btn btn-primary" th:href="@{/admin/services/new}">+ เพิ่มบริการ</a>
+    </div>
+
+    <!-- flash message -->
+    <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <div class="table-responsive">
+      <table class="table table-striped align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>ชื่อบริการ</th>
+            <th class="text-center">ระยะเวลา (นาที)</th>
+            <th class="text-end">ราคา</th>
+            <th class="text-end">มัดจำขั้นต่ำ</th>
+            <th class="text-center">สถานะ</th>
+            <th class="text-end">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="svc, iStat : ${services}">
+            <td th:text="${iStat.index + 1}">1</td>
+            <td th:text="${svc.name}">ทำเล็บเจล (Basic)</td>
+            <td class="text-center" th:text="${svc.durationMin}">60</td>
+            <td class="text-end"
+                th:text="${#numbers.formatDecimal(svc.price, 1, 'COMMA', 2, 'POINT')}">800.00</td>
+            <td class="text-end"
+                th:text="${#numbers.formatDecimal(svc.depositMin, 1, 'COMMA', 2, 'POINT')}">200.00</td>
+            <td class="text-center">
+              <span th:text="${svc.active} ? 'ใช้งาน' : 'ปิด'"
+                    th:classappend="${svc.active} ? 'badge bg-success' : 'badge bg-secondary'">ใช้งาน</span>
+            </td>
+            <td class="text-end">
+              <a class="btn btn-sm btn-outline-primary"
+                 th:href="@{'/admin/services/' + ${svc.id} + '/edit'}">แก้ไข</a>
+
+              <a class="btn btn-sm btn-outline-danger"
+                 th:if="${svc.active}"
+                 th:href="@{'/admin/services/' + ${svc.id} + '/delete'}"
+                 onclick="return confirm('ลบบริการนี้ไหม? หากมีการอ้างอิงระบบจะปิดใช้งานให้แทน');">ลบ</a>
+
+              <span th:if="${!svc.active}" class="text-muted ms-2">ปิดใช้งานอยู่</span>
+            </td>
+          </tr>
+
+          <tr th:if="${#lists.isEmpty(services)}">
+            <td colspan="7" class="text-center text-muted">ยังไม่มีบริการ</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== CSS เพิ่มเติม ===== -->
+  <style>
+    table th, table td {
+      vertical-align: middle;
+    }
+    .btn-sm {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.8rem;
+    }
+    @media (max-width: 576px) {
+      table {
+        font-size: 0.85rem;
+      }
+      .btn {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+      }
+    }
+  </style>
+
+</section>
+</html>

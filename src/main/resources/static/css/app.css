@@ -1,0 +1,179 @@
+/* =====================================================
+   🌸 NAILORA Unified Theme (User + Admin)
+   - ใช้งานได้กับ HTML เดิมทั้งหมด
+   - ไม่ต้องแก้ class หรือตัวแปร
+   ===================================================== */
+
+/* -------- สีหลักสำหรับทั้งระบบ -------- */
+:root {
+  /* User colors */
+  --fg:#111;
+  --bg:#fff;
+  --muted:#6b7280;
+  --pri:#111827;
+  --acc:#6366f1;
+  --danger:#ef4444;
+
+  /* Admin pink palette */
+  --pink-700:#c22573;
+  --pink-600:#d63384;
+  --pink-500:#e64997;
+  --pink-400:#f06595;
+  --pink-300:#f7a7c5;
+  --pink-200:#f8d7e8;
+  --pink-100:#fde7f1;
+  --gray-900:#111827;
+  --gray-500:#6b7280;
+  --white:#ffffff;
+  --shadow: 0 8px 24px rgba(0,0,0,.08);
+}
+
+/* =====================================================
+   🧍 ส่วนลูกค้า (User)
+   ===================================================== */
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--fg);
+  font:16px/1.6 system-ui, sans-serif;
+}
+.container{max-width:980px;margin:0 auto;padding:16px}
+header.container{display:flex;align-items:center;justify-content:space-between}
+.brand a{text-decoration:none;color:var(--pri);font-weight:700}
+nav a{margin-left:12px;color:var(--pri);text-decoration:none}
+.muted{color:var(--muted)}
+.btn{display:inline-block;background:var(--acc);color:#fff;padding:8px 14px;border-radius:10px;text-decoration:none;border:0;cursor:pointer;transition:.2s}
+.btn:hover{opacity:.85}
+.btn.danger{background:var(--danger)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.card{border:1px solid #e5e7eb;border-radius:12px;padding:16px}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.list{display:flex;flex-direction:column;gap:12px}
+.slot{display:flex;align-items:center;justify-content:space-between;border:1px dashed #e5e7eb;border-radius:12px;padding:12px}
+input,select{padding:8px;border:1px solid #e5e7eb;border-radius:10px;width:100%;max-width:300px}
+
+/* =====================================================
+   💼 ส่วนแอดมิน (Pink Theme)
+   ===================================================== */
+
+/* body + font */
+body.admin-mode {
+  font-family: "Segoe UI", "Noto Sans Thai", sans-serif;
+  background: linear-gradient(180deg, var(--pink-100), #fff 40%);
+  color: var(--gray-900);
+}
+
+/* header */
+.app-header {
+  background: linear-gradient(90deg, var(--pink-600), var(--pink-400));
+  color: var(--white);
+  box-shadow: var(--shadow);
+}
+.app-header .brand {
+  font-weight: 800;
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+}
+.app-header nav a {
+  color: var(--white);
+  padding:.4rem .8rem;
+  border-radius:.6rem;
+  text-decoration:none;
+  opacity:.9;
+}
+.app-header nav a:hover { background: rgba(255,255,255,.2); opacity:1; }
+
+/* page title */
+.page-title {
+  display:flex;
+  gap:.6rem;
+  align-items:center;
+  font-size:2rem;
+  color: var(--pink-600);
+  margin:1.2rem 0;
+}
+
+/* tabs */
+.tabs { display:flex; gap:.6rem; margin-bottom:1rem; }
+.tabs button {
+  padding:.5rem 1rem;
+  border:1px solid var(--pink-300);
+  border-radius:999px;
+  background:var(--pink-200);
+  cursor:pointer;
+  font-weight:600;
+}
+.tabs button.active { background:var(--pink-600); color:white; }
+
+/* table */
+.table {
+  width:100%;
+  border-collapse: collapse;
+  margin-top:1rem;
+  background:white;
+  border-radius:.7rem;
+  overflow:hidden;
+  box-shadow: var(--shadow);
+}
+.table th, .table td {
+  padding:.8rem;
+  text-align:center;
+  border-bottom:1px solid var(--pink-100);
+}
+.table th {
+  background: var(--pink-200);
+  color: var(--pink-700);
+}
+
+/* button */
+.btn {
+  background: var(--pink-500);
+  border:none;
+  color:white;
+  border-radius:.5rem;
+  padding:.4rem .8rem;
+  cursor:pointer;
+  transition:.2s;
+}
+.btn:hover { background: var(--pink-600); }
+
+/* modal */
+.modal { 
+  display:none;
+  position:fixed;
+  inset:0;
+  background: rgba(0,0,0,.45);
+  align-items:center;
+  justify-content:center;
+}
+.modal.open { display:flex; }
+.modal-card {
+  background:white;
+  border-radius:1rem;
+  padding:1.5rem;
+  width:min(500px, 90%);
+  box-shadow: var(--shadow);
+  border:2px solid var(--pink-200);
+}
+.modal-card h3 { margin:0 0 1rem; color:var(--pink-600); }
+.modal-card label { display:block; margin:.5rem 0; }
+.modal-card input, .modal-card textarea {
+  width:100%;
+  padding:.4rem;
+  border:1px solid var(--pink-300);
+  border-radius:.5rem;
+  margin-top:.2rem;
+}
+.modal-card footer {
+  display:flex;
+  justify-content:flex-end;
+  gap:.5rem;
+  margin-top:1rem;
+}
+
+.hidden { display:none !important; }
+
+.badge.green{ background:#d1e7dd; color:#0f5132; padding:.3rem .6rem; border-radius:.5rem; }
+.badge.gray{ background:#e2e3e5; color:#41464b; padding:.3rem .6rem; border-radius:.5rem; }

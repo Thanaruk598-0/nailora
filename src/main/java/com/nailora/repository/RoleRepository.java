@@ -1,5 +1,7 @@
 package com.nailora.repository;
 
-public interface RoleRepository {
+import org.springframework.data.jpa.repository.JpaRepository;
+import com.nailora.entity.Role;
 
+public interface RoleRepository extends JpaRepository<Role, Long> {
 }

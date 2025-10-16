@@ -16,5 +16,5 @@ public class Role {
 	private Long id;
 
 	@Column(nullable = false, length = 50, unique = true)
-	private String name; //ชื่อบทบาท (เช่น ROLE_ADMIN)
+	private String name; // เช่น "ROLE_ADMIN"
 }

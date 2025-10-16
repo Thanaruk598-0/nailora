@@ -1,5 +1,10 @@
 package com.nailora.repository;
 
-public interface BookingAddOnRepository {
+import com.nailora.entity.BookingAddOn;
+import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+
+public interface BookingAddOnRepository extends JpaRepository<BookingAddOn, Long> {
+	List<BookingAddOn> findByBookingId(Long bookingId);
 }

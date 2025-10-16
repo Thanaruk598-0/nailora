@@ -10,7 +10,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "time_slot")
+@Table(name = "time_slot", uniqueConstraints = {
+		@UniqueConstraint(name = "uq_timeslot_service_start", columnNames = { "service_id", "start_at" }) })
 public class TimeSlot {
 
 	@Id
@@ -19,21 +20,33 @@ public class TimeSlot {
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "service_id", nullable = false)
-	private ServiceItem service; //อ้างบริการ
+	private ServiceItem serviceItem;
+
+	@Column(name = "start_at", nullable = false)
+	private LocalDateTime startAt;
+
+	@Column(name = "end_at", nullable = false)
+	private LocalDateTime endAt;
+
+	// กันปี พ.ศ. ให้กลายเป็น ค.ศ. ก่อน persist/update เสมอ
+	@PrePersist
+	@PreUpdate
+	void fixThaiYear() {
+		if (startAt != null && startAt.getYear() > 2200)
+			startAt = startAt.minusYears(543);
+		if (endAt != null && endAt.getYear() > 2200)
+			endAt = endAt.minusYears(543);
+	}
+
+	@Column(name = "capacity")
+	private Integer capacity;
+
+	@Column(name = "open")
+	private Boolean open;
+
+	@Column(name = "tech_name")
+	private String techName;
 
 	@Column(nullable = false)
-	private LocalDateTime startAt; //เวลาเริ่มคิว
-
-	@Column(nullable = false)
-	private LocalDateTime endAt; //เวลาจบคิว
-
-	@Column(nullable = false)
-	private Integer capacity = 1; //จำนวนที่นั่ง/ที่รับได้ในช่วงนั้น
-
-	@Column(nullable = false)
-	private Boolean open = true; //เปิดให้จองสาธารณะไหม
-
-	@Column(length = 80)
-	private String techName; //ชื่อช่าง/ผู้ทำบริการ
-
+	private Boolean active = true;
 }

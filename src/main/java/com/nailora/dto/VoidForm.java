@@ -1,5 +1,12 @@
 package com.nailora.dto;
 
-public record VoidForm() {
+import lombok.*;
 
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class VoidForm {
+	private String paymentRef;
 }
