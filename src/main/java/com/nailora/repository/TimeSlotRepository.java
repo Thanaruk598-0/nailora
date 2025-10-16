@@ -56,11 +56,14 @@ public interface TimeSlotRepository extends JpaRepository<TimeSlot, Long> {
 
 	long countByServiceItem_Id(Long serviceItemId);
 
-	boolean existsByServiceItem_IdAndStartAt(Long serviceItemId, java.time.LocalDateTime startAt);
+	boolean existsByServiceItem_IdAndStartAt(Long serviceItemId, LocalDateTime startAt);
 
+	// ตัวช่วยหาแถวที่ยังเป็นปีพุทธ (ใช้ HQL year() ซึ่ง Hibernate map ไปเป็น
+	// extract(year from ...) บน Postgres)
 	@Query("""
-	           select t from TimeSlot t
-	           where t.startAt >= :cutoff or t.endAt >= :cutoff
-	           """)
-	    List<TimeSlot> findWithBuddhistYear(@Param("cutoff") LocalDateTime cutoff);
+			select t from TimeSlot t
+			where (t.startAt is not null and t.startAt >= :cutoff)
+			   or (t.endAt   is not null and t.endAt   >= :cutoff)
+			""")
+	List<TimeSlot> findWithBuddhistYear(@Param("cutoff") LocalDateTime cutoff);
 }

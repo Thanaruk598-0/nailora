@@ -8,7 +8,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 
@@ -20,7 +22,7 @@ public class PublicDayController {
 	private static final Logger log = LoggerFactory.getLogger(PublicDayController.class);
 
 	private final JdbcTemplate jdbc;
-	private final java.time.Clock clock;
+	private final Clock clock;
 
 	// ---------- JSON (debug fields included) ----------
 	@GetMapping("/day.json")
@@ -74,39 +76,38 @@ public class PublicDayController {
 		return d;
 	}
 
-	// ---------- QUERY: ใช้ช่วงเวลา [from,to) + รองรับ open/active หลายแบบ
-	// ----------
-	// วางแทนเมธอด querySlotsByDate(...)
+	// ---------- QUERY: ใช้ช่วงเวลา [from,to) + รองรับ PostgreSQL ----------
 	private List<Map<String, Object>> querySlotsByDate(Long serviceId, LocalDate date, LocalDateTime now) {
 		LocalDateTime from = date.atStartOfDay();
 		LocalDateTime to = date.plusDays(1).atStartOfDay();
 
 		return jdbc.queryForList("""
 				SELECT
-				  t.id         AS id,
-				  t.start_at   AS startAt,
-				  t.end_at     AS endAt,
-				  t.tech_name  AS techName,
-				  t.capacity   AS capacity,
-				  (t.capacity -
-				     ( SELECT COUNT(b.id)
-				       FROM booking b
-				       WHERE b.time_slot_id = t.id
-				         AND b.status = 'BOOKED'
-				         AND (
-				           b.deposit_status = 'PAID'
-				           OR (b.deposit_status IN ('UNPAID','PROCESSING') AND b.deposit_due_at > ?)
-				         )
-				     )
-				  ) AS remaining
+				  t.id                          AS "id",
+				  t.start_at                    AS "startAt",
+				  t.end_at                      AS "endAt",
+				  t.tech_name                   AS "techName",
+				  t.capacity                    AS "capacity",
+				  GREATEST(
+				    t.capacity - (
+				      SELECT COALESCE(CAST(COUNT(b.id) AS INTEGER), 0)
+				      FROM booking b
+				      WHERE b.time_slot_id = t.id
+				        AND b.status = 'BOOKED'
+				        AND (
+				          b.deposit_status = 'PAID'
+				          OR (b.deposit_status IN ('UNPAID','PROCESSING') AND b.deposit_due_at > ?)
+				        )
+				    ),
+				    0
+				  )                              AS "remaining"
 				FROM time_slot t
 				WHERE t.service_id = ?
 				  AND t.start_at >= ?
 				  AND t.start_at <  ?
-				  AND (t.open   = TRUE OR t.open   = 1 OR t.open   = b'1')
-				  AND (t.active = TRUE OR t.active = 1 OR t.active = b'1')
+				  AND t.open   IS TRUE
+				  AND t.active IS TRUE
 				ORDER BY t.start_at
 				""", now, serviceId, from, to);
 	}
-
 }
