@@ -1,24 +1,6 @@
 <!DOCTYPE html>
-<html lang="th" xmlns:th="http://www.thymeleaf.org">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title th:text="${title} ?: 'เลือกช่วงเวลา'">เลือกช่วงเวลา</title>
-  <link rel="stylesheet" href="/css/app.css"/>
-  <style>
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: .65rem .75rem; vertical-align: middle; text-align: center; }
-    tr:hover { background-color: #fff0f6; }
-    .btn-outline-primary { border: 1px solid #c2185b; color: #c2185b; transition: all .2s; }
-    .btn-outline-primary:hover { background: #c2185b; color: #fff; }
-    .btn-secondary { background:#6c757d; color:#fff; border:none; cursor:not-allowed; }
-    @media(max-width:768px){
-      th, td { font-size:.85rem; padding:.5rem; }
-      .btn-sm { font-size:.75rem; padding:.35rem .5rem; }
-    }
-  </style>
-</head>
-<body>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(content=~{::section})}">
 <section class="container py-4">
 
   <h1 class="h3 mb-2 text-center" style="color:#c2185b;"
@@ -38,10 +20,8 @@
         </tr>
       </thead>
       <tbody>
-        <!-- สร้างบรรทัดจากฝั่งเซิร์ฟเวอร์ก่อน (first paint) -->
         <tr th:each="s : ${slots}"
             th:with="remain=${s.remaining} == null ? s.capacity : s.remaining">
-          <!-- ถ้าเครื่องไม่มี thymeleaf-extras ก็เลี่ยง #temporals ด้วยการให้ JS จัดรูปเวลาแทน -->
           <td>
             <span class="sa" th:text="${s.startAt}">2025-01-01T10:00:00</span>
             -
@@ -53,8 +33,7 @@
             <form action="/booking/confirm" method="get">
               <input type="hidden" name="slotId" th:value="${s.id}">
               <input type="hidden" name="serviceId" th:value="${serviceId}">
-              <button type="submit"
-                      class="btn btn-sm"
+              <button type="submit" class="btn btn-sm"
                       th:classappend="${remain} == 0 ? ' btn-secondary' : ' btn-outline-primary'"
                       th:attr="disabled=${remain} == 0 ? 'disabled' : null">
                 <span th:text="${remain} == 0 ? 'เต็ม' : 'จอง'">จอง</span>
@@ -74,65 +53,54 @@
     <a class="btn btn-outline-secondary" href="/booking/services">← กลับไปเลือกบริการ</a>
   </div>
 
-  <!-- ปิด inline เพื่อกัน Thymeleaf ไปยุ่งกับ ${} ของ JS -->
+  <!-- กัน Thymeleaf ไปยุ่ง ${} ใน JS -->
   <script th:inline="none">
-  // แปลงเวลา ISO -> HH:mm ในทั้ง first paint และข้อมูลสด
-  const toHM = (iso) => {
-    const d = new Date(iso);
-    return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  };
+    const toHM = (iso) => new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    (function formatServerTimes(){
+      document.querySelectorAll('span.sa').forEach(el => el.textContent = toHM(el.textContent));
+      document.querySelectorAll('span.ea').forEach(el => el.textContent = toHM(el.textContent));
+    })();
 
-  // ปรับ <span class="sa|ea"> ให้แสดง HH:mm
-  (function formatServerTimes(){
-    document.querySelectorAll('span.sa').forEach(el => el.textContent = toHM(el.textContent));
-    document.querySelectorAll('span.ea').forEach(el => el.textContent = toHM(el.textContent));
-  })();
+    (async () => {
+      try {
+        const params = new URLSearchParams(location.search);
+        let date = params.get('date');
+        const serviceId = params.get('serviceId');
+        if (!date) {
+          const t = new Date(), pad = n => String(n).padStart(2,'0');
+          date = `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
+        }
+        const res = await fetch(`/booking/slots?${new URLSearchParams({date, serviceId})}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const slots = Array.isArray(data.slots) ? data.slots : [];
+        if (slots.length === 0) return;
 
-  // live refresh ช่องเวลา (ใช้ JSON /booking/slots)
-  (async () => {
-    try {
-      const params = new URLSearchParams(location.search);
-      let date = params.get('date');
-      const serviceId = params.get('serviceId');
-      if (!date) {
-        const t = new Date();
-        const pad = n => String(n).padStart(2,'0');
-        date = `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
-      }
-
-      const res = await fetch(`/booking/slots?${new URLSearchParams({date, serviceId})}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      const slots = Array.isArray(data.slots) ? data.slots : [];
-      if (slots.length === 0) return;
-
-      const tb = document.querySelector('#slots tbody');
-      tb.innerHTML = '';
-      slots.forEach(s => {
-        const remain = (s.remaining ?? s.capacity ?? 0);
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${toHM(s.startAt)} - ${toHM(s.endAt)}</td>
-          <td>${s.techName ?? '-'}</td>
-          <td><b>${remain}</b>/${s.capacity ?? 0}</td>
-          <td>
-            <form action="/booking/confirm" method="get">
-              <input type="hidden" name="slotId" value="${s.id}">
-              <input type="hidden" name="serviceId" value="${serviceId}">
-              <button type="submit" class="btn btn-sm ${remain === 0 ? 'btn-secondary' : 'btn-outline-primary'}"
-                      ${remain === 0 ? 'disabled' : ''}>
-                ${remain === 0 ? 'เต็ม' : 'จอง'}
-              </button>
-            </form>
-          </td>
-        `;
-        tb.appendChild(tr);
-      });
-    } catch (e) {
-      console.warn('โหลดข้อมูล slot สดไม่สำเร็จ', e);
-    }
-  })();
+        const tb = document.querySelector('#slots tbody');
+        tb.innerHTML = '';
+        slots.forEach(s => {
+          const remain = (s.remaining ?? s.capacity ?? 0);
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${toHM(s.startAt)} - ${toHM(s.endAt)}</td>
+            <td>${s.techName ?? '-'}</td>
+            <td><b>${remain}</b>/${s.capacity ?? 0}</td>
+            <td>
+              <form action="/booking/confirm" method="get">
+                <input type="hidden" name="slotId" value="${s.id}">
+                <input type="hidden" name="serviceId" value="${serviceId}">
+                <button type="submit" class="btn btn-sm ${remain === 0 ? 'btn-secondary' : 'btn-outline-primary'}"
+                        ${remain === 0 ? 'disabled' : ''}>
+                  ${remain === 0 ? 'เต็ม' : 'จอง'}
+                </button>
+              </form>
+            </td>
+          `;
+          tb.appendChild(tr);
+        });
+      } catch (e) { console.warn('โหลดข้อมูล slot สดไม่สำเร็จ', e); }
+    })();
   </script>
+
 </section>
-</body>
 </html>
