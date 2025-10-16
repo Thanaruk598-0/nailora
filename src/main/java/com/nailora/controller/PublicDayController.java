@@ -76,37 +76,34 @@ public class PublicDayController {
 		return d;
 	}
 
-	// ---------- QUERY: ใช้ช่วงเวลา [from,to) + รองรับ PostgreSQL ----------
+	// ---------- QUERY (Postgres-safe): [from, to) + boolean ตรง ๆ ----------
 	private List<Map<String, Object>> querySlotsByDate(Long serviceId, LocalDate date, LocalDateTime now) {
 		LocalDateTime from = date.atStartOfDay();
 		LocalDateTime to = date.plusDays(1).atStartOfDay();
 
 		return jdbc.queryForList("""
 				SELECT
-				  t.id                          AS "id",
-				  t.start_at                    AS "startAt",
-				  t.end_at                      AS "endAt",
-				  t.tech_name                   AS "techName",
-				  t.capacity                    AS "capacity",
-				  GREATEST(
-				    t.capacity - (
-				      SELECT COALESCE(CAST(COUNT(b.id) AS INTEGER), 0)
-				      FROM booking b
-				      WHERE b.time_slot_id = t.id
-				        AND b.status = 'BOOKED'
-				        AND (
-				          b.deposit_status = 'PAID'
-				          OR (b.deposit_status IN ('UNPAID','PROCESSING') AND b.deposit_due_at > ?)
-				        )
-				    ),
-				    0
-				  )                              AS "remaining"
+				  t.id                               AS id,
+				  t.start_at                         AS "startAt",
+				  t.end_at                           AS "endAt",
+				  t.tech_name                        AS "techName",
+				  t.capacity                         AS "capacity",
+				  (t.capacity - (
+				     SELECT COUNT(1)
+				     FROM booking b
+				     WHERE b.time_slot_id = t.id
+				       AND b.status = 'BOOKED'
+				       AND (
+				         b.deposit_status = 'PAID'
+				         OR (b.deposit_status IN ('UNPAID','PROCESSING') AND b.deposit_due_at > ?)
+				       )
+				  ))                                  AS "remaining"
 				FROM time_slot t
-				WHERE t.service_id = ?
+				WHERE t.service_item_id = ?
 				  AND t.start_at >= ?
 				  AND t.start_at <  ?
-				  AND t.open   IS TRUE
-				  AND t.active IS TRUE
+				  AND t.open   = TRUE
+				  AND t.active = TRUE
 				ORDER BY t.start_at
 				""", now, serviceId, from, to);
 	}
