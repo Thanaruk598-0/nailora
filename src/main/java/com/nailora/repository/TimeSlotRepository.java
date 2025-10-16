@@ -59,9 +59,8 @@ public interface TimeSlotRepository extends JpaRepository<TimeSlot, Long> {
 	boolean existsByServiceItem_IdAndStartAt(Long serviceItemId, java.time.LocalDateTime startAt);
 
 	@Query("""
-			  select t from TimeSlot t
-			  where function('year', t.startAt) > 2200
-			     or function('year', t.endAt)   > 2200
-			""")
-	java.util.List<TimeSlot> findWithBuddhistYear();
+	           select t from TimeSlot t
+	           where t.startAt >= :cutoff or t.endAt >= :cutoff
+	           """)
+	    List<TimeSlot> findWithBuddhistYear(@Param("cutoff") LocalDateTime cutoff);
 }
