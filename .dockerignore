@@ -1,0 +1,35 @@
+# ---- Build outputs
+target/
+
+# ---- Maven wrapper/cache (ไม่จำเป็นต่อการ build ใน container ของเรา)
+.mvn/
+mvnw
+mvnw.cmd
+
+# ---- IDE junk
+*.iml
+.idea/
+.vscode/
+.project
+.classpath
+.settings/
+
+# ---- OS junk
+.DS_Store
+Thumbs.db
+
+# ---- Logs & temp
+*.log
+logs/
+tmp/
+**/*.swp
+
+# ---- Git
+.git/
+.gitignore
+
+# ---- Misc (แล้วแต่โปรเจกต์)
+*.env
+**/*.pem
+**/*.key
+docker-compose*.yml
