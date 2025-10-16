@@ -99,6 +99,12 @@
        <artifactId>stripe-java</artifactId>
        <version>30.0.0</version>
     </dependency>
+    
+    <dependency>
+	  <groupId>org.postgresql</groupId>
+	  <artifactId>postgresql</artifactId>
+	  <scope>runtime</scope>
+	</dependency>
   </dependencies>
 
   <build>
