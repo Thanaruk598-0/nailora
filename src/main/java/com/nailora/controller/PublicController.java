@@ -70,13 +70,15 @@ public class PublicController {
 	public String services(Model model) {
 		model.addAttribute("title", "บริการ");
 		model.addAttribute("services", serviceItemRepository.findAll());
+		
+		
 		return "booking/catalog";
 	}
 
 	@GetMapping("/confirm")
 	public String confirm(@RequestParam Long slotId, @RequestParam Long serviceId, Model model) {
 		var slot = timeSlotRepository.findByIdWithService(slotId).orElseThrow();
-		var svc = slot.getService();
+		var svc = slot.getServiceItem();
 
 		// ป้องกันกรณีแก้ serviceId ใน URL ไม่ตรงกับ slot: บังคับใช้ตาม slot
 		Long effectiveServiceId = svc.getId();
@@ -111,6 +113,7 @@ public class PublicController {
 																											// BookingSummary
 																											// เป็นข้อความเวลาจบ
 		));
+		
 
 		return "booking/confirm";
 	}

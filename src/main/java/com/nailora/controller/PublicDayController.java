@@ -1,6 +1,8 @@
 package com.nailora.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -15,58 +17,70 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PublicDayController {
 
+	private static final Logger log = LoggerFactory.getLogger(PublicDayController.class);
+
 	private final JdbcTemplate jdbc;
 	private final java.time.Clock clock;
 
-	// ---------- JSON: ใช้เดิมได้เหมือนก่อน ----------
+	// ---------- JSON (debug fields included) ----------
 	@GetMapping("/day.json")
 	@ResponseBody
 	public Map<String, Object> dayJson(@RequestParam String date, @RequestParam Long serviceId) {
-		var range = rangeOf(date);
-		List<Map<String, Object>> rows = querySlots(serviceId, range.from(), range.to(), range.now());
-		return Map.of("date", date, "serviceId", serviceId, "count", rows.size(), "slots", rows);
+		LocalDate d = normalizeDate(date);
+		LocalDateTime now = LocalDateTime.now(clock);
+		List<Map<String, Object>> rows = querySlotsByDate(serviceId, d, now);
+
+		log.info("[day.json] serviceId={}, date={}, now={}, rows={}", serviceId, d, now, rows.size());
+
+		return Map.of("date", date, "serviceId", serviceId, "count", rows.size(), "slots", rows,
+				// debug fields
+				"_debug_date", d.toString(), "_debug_now", now.toString());
 	}
 
-	// ---------- VIEW: ตารางเลือกช่วงเวลา ----------
+	// ---------- VIEW ----------
 	@GetMapping("/day")
 	public String day(@RequestParam String date, @RequestParam Long serviceId, Model model) {
-		var range = rangeOf(date);
-		List<Map<String, Object>> slots = querySlots(serviceId, range.from(), range.to(), range.now());
+		LocalDate d = normalizeDate(date);
+		LocalDateTime now = LocalDateTime.now(clock);
+		List<Map<String, Object>> slots = querySlotsByDate(serviceId, d, now);
+
+		log.info("[day] serviceId={}, date={}, now={}, rows={}", serviceId, d, now, slots.size());
 
 		model.addAttribute("title", "เลือกช่วงเวลา");
-		model.addAttribute("date", date);
+		model.addAttribute("date", date); // แสดงตามที่ผู้ใช้ส่งมา
 		model.addAttribute("serviceId", serviceId);
 		model.addAttribute("slots", slots);
 		return "booking/day";
 	}
 
-	// ---------- JSON ใหม่: /booking/slots?serviceId=..&date=.. ----------
-	// รูปแบบผลลัพธ์เหมือน day.json (อ่านง่าย เรียกใช้จาก FE ได้)
+	// ---------- JSON ใหม่ ----------
 	@GetMapping("/slots")
 	@ResponseBody
 	public Map<String, Object> slots(@RequestParam Long serviceId, @RequestParam String date) {
-		var range = rangeOf(date);
-		List<Map<String, Object>> rows = querySlots(serviceId, range.from(), range.to(), range.now());
+		LocalDate d = normalizeDate(date);
+		LocalDateTime now = LocalDateTime.now(clock);
+		List<Map<String, Object>> rows = querySlotsByDate(serviceId, d, now);
+
+		log.info("[slots] serviceId={}, date={}, now={}, rows={}", serviceId, d, now, rows.size());
+
 		return Map.of("serviceId", serviceId, "date", date, "count", rows.size(), "slots", rows);
 	}
 
-	// ---------- เมธอดช่วย: ช่วงเวลา/ตอนนี้ ----------
-	private record DayRange(LocalDateTime from, LocalDateTime to, LocalDateTime now) {
+	// ---------- helper: ปรับ พ.ศ. → ค.ศ. ----------
+	private LocalDate normalizeDate(String yyyyMmDd) {
+		LocalDate d = LocalDate.parse(yyyyMmDd);
+		if (d.getYear() > 2200)
+			d = d.minusYears(543);
+		return d;
 	}
 
-	private DayRange rangeOf(String date) {
-		LocalDate d = LocalDate.parse(date);
-		LocalDateTime from = d.atStartOfDay();
-		LocalDateTime to = d.plusDays(1).atStartOfDay();
-		LocalDateTime now = LocalDateTime.now(clock);
-		return new DayRange(from, to, now);
-	}
+	// ---------- QUERY: ใช้ช่วงเวลา [from,to) + รองรับ open/active หลายแบบ
+	// ----------
+	// วางแทนเมธอด querySlotsByDate(...)
+	private List<Map<String, Object>> querySlotsByDate(Long serviceId, LocalDate date, LocalDateTime now) {
+		LocalDateTime from = date.atStartOfDay();
+		LocalDateTime to = date.plusDays(1).atStartOfDay();
 
-	// ---------- เมธอดช่วย: ดึงสลอตจาก DB ----------
-	// NOTE: ให้คอลัมน์ id เป็นชื่อเดียวกับที่หน้า day.html ใช้
-	// (id/startAt/endAt/techName/capacity/remaining)
-	private List<Map<String, Object>> querySlots(Long serviceId, LocalDateTime from, LocalDateTime to,
-			LocalDateTime now) {
 		return jdbc.queryForList("""
 				SELECT
 				  t.id         AS id,
@@ -89,8 +103,10 @@ public class PublicDayController {
 				WHERE t.service_id = ?
 				  AND t.start_at >= ?
 				  AND t.start_at <  ?
-				  AND t.open = 1
+				  AND (t.open   = TRUE OR t.open   = 1 OR t.open   = b'1')
+				  AND (t.active = TRUE OR t.active = 1 OR t.active = b'1')
 				ORDER BY t.start_at
 				""", now, serviceId, from, to);
 	}
+
 }

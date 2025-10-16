@@ -1,59 +1,288 @@
-<!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="th"
-      th:replace="~{layout :: layout(~{::section})}">
-<section>
-  <h1 th:text="${title} ?: 'รายการจองของคุณ'">รายการจองของคุณ</h1>
-  <p>เบอร์: <b th:text="${phone}">-</b></p>
-
-  <table border="1" cellspacing="0" cellpadding="6">
-    <thead>
-    <tr>
-      <th>#</th><th>บริการ</th><th>ช่าง</th><th>เวลา</th><th>สถานะ</th>
-      <th>มัดจำ</th><th>ราคารวม</th><th>รายละเอียด</th><th>ใบเสร็จ</th><th>จัดการ</th>
-    </tr>
-    </thead>
-    <tbody>
-      <tr th:each="b, iStat : ${bookings}">
-        <td th:text="${iStat.count}">1</td>
-        <td th:text="${b.get('serviceName')}">-</td>
-        <td th:text="${b.get('techName')}">-</td>
-        <td th:text="${#temporals.format(b.get('startAt'), 'dd MMM HH:mm')}">-</td>
-        <td>
-          <span th:text="${b.get('status')}">BOOKED</span>
-          (<span th:text="${b.get('depositStatus')}">PAID</span>)
-        </td>
-        <td th:text="${#numbers.formatDecimal(b.get('depositAmount'), 1, 'COMMA', 2, 'POINT')}">0.00</td>
-        <td th:text="${#numbers.formatDecimal(b.get('totalPrice'), 1, 'COMMA', 2, 'POINT')}">0.00</td>
-        <td>
-          <div>
-            <div>บริการ: <span th:text="${#numbers.formatDecimal(b.get('servicePrice'),1,'COMMA',2,'POINT')}">0.00</span></div>
-            <div>Add-on:
-              <span th:if="${#lists.isEmpty(b.get('addOnNames'))}">-</span>
-              <ul th:if="${!#lists.isEmpty(b.get('addOnNames'))}">
-                <li th:each="name : ${b.get('addOnNames')}" th:text="${name}"></li>
-              </ul>
-              รวม: <b th:text="${#numbers.formatDecimal(b.get('addOnPrice'),1,'COMMA',2,'POINT')}">0.00</b>
-            </div>
-          </div>
-        </td>
-        <td>
-          <a th:if="${b.get('receiptUrl') != null}" th:href="${b.get('receiptUrl')}" target="_blank">เปิดใบเสร็จ</a>
-          <span th:if="${b.get('receiptUrl') == null}">-</span>
-        </td>
-        <td>
-          <!-- เงื่อนไขฝั่ง BE คำนวณให้แล้ว: canCancel = true เฉพาะคิวอนาคต/ล่าสุด -->
-          <button th:if="${b.get('canCancel') == true}" type="button"
-                  th:attr="data-id=${b.get('id')}"
-                  onclick="app.cancelBooking(event)">ยกเลิก</button>
-          <span th:if="${b.get('canCancel') != true}">—</span>
-        </td>
-      </tr>
-      <tr th:if="${#lists.isEmpty(bookings)}">
-        <td colspan="10">ไม่พบรายการ</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <p style="margin-top:12px;"><a href="/my-bookings">← กลับหน้าใส่เบอร์</a></p>
-</section>
-</html>
+	<!DOCTYPE html>
+	<html xmlns:th="http://www.thymeleaf.org" lang="th"
+	      th:replace="~{layout :: layout(~{::section})}">
+	<section class="container py-4" style="max-width:1100px;">
+	
+	  <!-- Hero / Header -->
+	  <div class="glass-hero shadow-sm mb-4">
+	    <div class="hero-inner">
+	      <div class="hero-left">
+	        <div class="hero-icon">💅</div>
+	        <div>
+	          <h1 class="hero-title" th:text="${title} ?: 'รายการจองของคุณ'">รายการจองของคุณ</h1>
+	          <p class="hero-sub">เบอร์ที่ค้นหา: <b th:text="${phone}">-</b></p>
+	        </div>
+	      </div>
+	    </div>
+	  </div>
+	
+	  <!-- Table -->
+	  <div class="card border-0 soft-shadow">
+	    <div class="card-body p-0">
+	      <div class="table-responsive">
+	        <table class="table table-hover align-middle fancy-table mb-0">
+	          <thead>
+	            <tr>
+	              <th class="text-center">#</th>
+	              <th>บริการ</th>
+	              <th>ช่าง</th>
+	              <th>เวลา</th>
+	              <th>สถานะ</th>
+	              <th class="text-end">มัดจำ</th>
+	              <th class="text-end">ราคารวม</th>
+	              <th style="min-width:300px">รายละเอียด</th>
+	              <th class="text-center">ใบเสร็จ</th>
+	            </tr>
+	          </thead>
+	
+	          <tbody>
+	            <tr th:each="b, iStat : ${bookings}" class="row-card">
+	              <td class="text-center index-col">
+	                <div class="idx-badge" th:text="${iStat.count}">1</div>
+	              </td>
+	
+	              <!-- บริการ -->
+	              <td>
+	                <div class="d-flex flex-column gap-1">
+	                  <div class="service-chip" th:text="${b.get('serviceName')}">-</div>
+	                  <div class="muted-12">
+	                    ราคาเริ่ม:
+	                    <b th:text="${#numbers.formatDecimal(b.get('servicePrice'),1,'COMMA',2,'POINT')}">0.00</b>
+	                  </div>
+	                </div>
+	              </td>
+	
+	              <!-- ช่าง -->
+	              <td>
+	                <div class="tech">
+	                  <div class="avatar" aria-hidden="true">✂️</div>
+	                  <div class="tech-name" th:text="${b.get('techName')}">-</div>
+	                </div>
+	              </td>
+	
+	              <!-- เวลา -->
+	              <td>
+	                <div class="time-wrap">
+	                  <div class="time-chip">
+	                    <svg class="i-clock" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+	                    <span th:text="${#temporals.format(b.get('startAt'), 'dd MMM yyyy HH:mm')}">-</span>
+	                  </div>
+	                </div>
+	              </td>
+	
+	              <!-- สถานะ -->
+	              <td>
+	                <div class="d-flex flex-column gap-1">
+	                  <span th:switch="${b.get('status')}">
+	                    <span th:case="'BOOKED'" class="pill pill-info">
+	                      <svg class="i-dot" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4"/></svg> จองแล้ว
+	                    </span>
+	                    <span th:case="'DONE'" class="pill pill-success">
+	                      <svg class="i-dot" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4"/></svg> เสร็จสิ้น
+	                    </span>
+	                    <span th:case="'CANCELLED'" class="pill pill-danger">
+	                      <svg class="i-dot" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4"/></svg> ยกเลิกแล้ว
+	                    </span>
+	                    <span th:case="*" class="pill pill-secondary">
+	                      <svg class="i-dot" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4"/></svg> ไม่ทราบ
+	                    </span>
+	                  </span>
+	                  <div class="muted-12">
+	                    มัดจำ:
+	                    <span class="pill-xs" th:classappend="${b.get('depositStatus')} == 'PAID' ? ' pill-okay' : ' pill-warn'"
+	                          th:text="${b.get('depositStatus')}">PAID</span>
+	                  </div>
+	                </div>
+	              </td>
+	
+	              <!-- มัดจำ -->
+	              <td class="text-end">
+	                <div class="num-lg" th:text="${#numbers.formatDecimal(b.get('depositAmount'), 1, 'COMMA', 2, 'POINT')}">0.00</div>
+	                <div class="muted-12">บาท</div>
+	              </td>
+	
+	              <!-- ราคารวม -->
+	              <td class="text-end">
+	                <div class="num-xl" th:text="${#numbers.formatDecimal(b.get('totalPrice'), 1, 'COMMA', 2, 'POINT')}">0.00</div>
+	                <div class="muted-12 strong">รวมสุทธิ</div>
+	              </td>
+	
+	              <!-- รายละเอียด -->
+	              <td>
+	                <div class="detail-box">
+	                  <div class="detail-row">
+	                    <span class="label">บริการหลัก</span>
+	                    <span class="value" th:text="${#numbers.formatDecimal(b.get('servicePrice'),1,'COMMA',2,'POINT')}">0.00</span>
+	                  </div>
+	
+	                  <div class="detail-row">
+	                    <span class="label">Add-on</span>
+	                    <span class="value">
+	                      <span th:if="${#lists.isEmpty(b.get('addOnNames'))}" class="muted-12">—</span>
+	                      <div class="addon-chips" th:if="${!#lists.isEmpty(b.get('addOnNames'))}">
+	                        <span class="chip" th:each="name : ${b.get('addOnNames')}" th:text="${name}">ชื่อ Add-on</span>
+	                      </div>
+	                    </span>
+	                  </div>
+	
+	                  <div class="detail-row">
+	                    <span class="label">รวม Add-on</span>
+	                    <span class="value strong" th:text="${#numbers.formatDecimal(b.get('addOnPrice'),1,'COMMA',2,'POINT')}">0.00</span>
+	                  </div>
+	                </div>
+	              </td>
+	
+	              <!-- ใบเสร็จ -->
+	              <td class="text-center">
+	                <a class="btn btn-sm btn-receipt"
+	                   th:if="${b.get('receiptUrl') != null}"
+	                   th:href="${b.get('receiptUrl')}" target="_blank">
+	                  <svg class="i-receipt" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M8 6h8M8 10h8M8 14h6"/></svg>
+	                  เปิดใบเสร็จ
+	                </a>
+	                <span class="text-muted" th:if="${b.get('receiptUrl') == null}">—</span>
+	              </td>
+	            </tr>
+	
+	            <!-- Empty state -->
+	            <tr th:if="${#lists.isEmpty(bookings)}">
+	              <td colspan="9" class="empty-state">
+	                <div class="empty-card">
+	                  <div class="empty-emoji">🪄</div>
+	                  <div class="empty-title">ยังไม่มีรายการจอง</div>
+	                  <div class="empty-sub">ลองกลับไปกรอกเบอร์อีกครั้ง หรือเริ่มจองคิวใหม่</div>
+	                  <div class="empty-actions">
+	                    <a class="btn btn-outline" href="/my-bookings">← กลับหน้าใส่เบอร์</a>
+	                    <a class="btn btn-primary" href="/booking/services">จองคิวใหม่</a>
+	                  </div>
+	                </div>
+	              </td>
+	            </tr>
+	          </tbody>
+	
+	          <!-- Total -->
+	          <tfoot th:if="${totalSum != null}">
+	            <tr class="table-total">
+	              <td colspan="6" class="text-end total-label"><b>รวมทั้งหมด:</b></td>
+	              <td class="text-end">
+	                <div class="num-xl" th:text="${#numbers.formatDecimal(totalSum,1,'COMMA',2,'POINT')}">0.00</div>
+	              </td>
+	              <td colspan="2"></td>
+	            </tr>
+	          </tfoot>
+	        </table>
+	      </div>
+	    </div>
+	  </div>
+	
+	  <!-- Styles -->
+	  <style>
+	    :root{
+	      --rose-500:#e91e63; --rose-600:#c2185b; --rose-700:#ad1457;
+	      --ink-900:#0f172a; --ink-700:#334155; --ink-500:#64748b;
+	      --surface:#ffffff; --soft:#fdf2f8; --line:#eef2f7;
+	      --ok:#16a34a; --warn:#f59e0b; --info:#0ea5e9; --danger:#dc2626;
+	      --chip:#f8fafc;
+	    }
+	
+	    .soft-shadow{box-shadow:0 10px 30px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.04)}
+	    .glass-hero{
+	      background: radial-gradient(1200px 300px at 10% -10%, rgba(233,30,99,.15), transparent),
+	                  radial-gradient(800px 300px at 100% 0%, rgba(156,39,176,.12), transparent),
+	                  linear-gradient(135deg, var(--rose-600), var(--rose-700));
+	      border-radius: 18px; color:#fff;
+	    }
+	    .hero-inner{padding:20px 22px; display:flex; align-items:center; justify-content:space-between; gap:16px;}
+	    .hero-left{display:flex; align-items:center; gap:14px}
+	    .hero-icon{width:44px; height:44px; display:grid; place-items:center; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); border-radius:12px; font-size:22px}
+	    .hero-title{margin:0; font-size:1.35rem; font-weight:800; letter-spacing:.2px}
+	    .hero-sub{margin:2px 0 0; opacity:.95}
+	
+	    .fancy-table thead th{
+	      background: linear-gradient(0deg, rgba(255,255,255,.6), rgba(255,255,255,.6)),
+	                  linear-gradient(90deg, #fff, #fff0);
+	      position:sticky; top:0; z-index:1; border-bottom:1px solid var(--line);
+	      color:var(--ink-700); font-weight:800; letter-spacing:.2px; text-transform:uppercase; font-size:.8rem;
+	    }
+	    .fancy-table tbody td{vertical-align:middle}
+	    .fancy-table tbody tr{transition: background-color .2s ease, transform .06s ease; border-top:1px solid #f6f7fb;}
+	    .fancy-table tbody tr:hover{background:
+	      linear-gradient(0deg, #fff, #fff),
+	      radial-gradient(500px 120px at 0% 0%, #ffe4ef, transparent);
+	    }
+	
+	    .row-card{--pad:14px}
+	    .index-col{width:56px}
+	    .idx-badge{width:34px; height:34px; display:grid; place-items:center; border-radius:10px; background:#fff3f8; color:var(--rose-700); font-weight:800; border:1px solid #ffd5e7; margin:auto}
+	
+	    .service-chip{
+	      display:inline-block; background:var(--chip); border:1px solid var(--line);
+	      padding:.35rem .55rem; border-radius:.65rem; font-weight:700; color:#111827;
+	    }
+	
+	    .tech{display:flex; align-items:center; gap:.5rem}
+	    .avatar{width:30px; height:30px; border-radius:8px; background:#fff6fa; display:grid; place-items:center; border:1px solid #ffe3ef; font-size:.85rem}
+	    .tech-name{font-weight:600; color:#111827}
+	
+	    .time-wrap{display:flex; align-items:center}
+	    .time-chip{display:inline-flex; align-items:center; gap:.4rem; background:#f1f5ff; border:1px solid #e5e9ff; padding:.35rem .5rem; border-radius:.55rem; font-weight:600; color:#1e293b}
+	    .i-clock{stroke:#1e293b; stroke-width:2}
+	
+	    .pill{display:inline-flex; align-items:center; gap:.4rem; border-radius:999px; padding:.28rem .6rem; font-weight:700; font-size:.82rem}
+	    .pill .i-dot{width:10px; height:10px; fill:currentColor}
+	    .pill-info{background:#e0f2fe; color:#075985}
+	    .pill-success{background:#dcfce7; color:#14532d}
+	    .pill-danger{background:#fee2e2; color:#7f1d1d}
+	    .pill-secondary{background:#e2e8f0; color:#334155}
+	
+	    .pill-xs{display:inline-block; padding:.15rem .5rem; border-radius:999px; font-size:.72rem; font-weight:700}
+	    .pill-okay{background:#e7f8ed; color:#186a3b; border:1px solid #c6f0d2}
+	    .pill-warn{background:#fff7e6; color:#8a4b0f; border:1px solid #ffe6b3}
+	
+	    .num-lg{font-weight:800; letter-spacing:.2px}
+	    .num-xl{font-weight:900; font-size:1.05rem; letter-spacing:.25px}
+	    .muted-12{font-size:.8rem; color:var(--ink-500)}
+	    .strong{font-weight:800}
+	
+	    .detail-box{
+	      border:1px dashed #f3c1d6; background:#fff7fb; border-radius:12px; padding:.6rem .75rem; display:flex; flex-direction:column; gap:.35rem
+	    }
+	    .detail-row{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap}
+	    .detail-row .label{color:#6b7280; font-weight:700; font-size:.85rem}
+	    .detail-row .value{font-weight:700; color:#111827}
+	    .addon-chips{display:flex; flex-wrap:wrap; gap:.35rem; max-width:100%}
+	    .chip{padding:.25rem .5rem; background:#fff; border:1px solid var(--line); border-radius:999px; font-size:.82rem; white-space:nowrap}
+	
+	    .btn{display:inline-flex; align-items:center; gap:.45rem; border-radius:10px; padding:.45rem .8rem; text-decoration:none; transition:.2s; border:1px solid transparent}
+	    .btn:hover{transform:translateY(-1px)}
+	    .btn-primary{background:var(--rose-600); color:#fff}
+	    .btn-outline{background:#fff; border-color:#e5e7eb; color:#111827}
+	    .btn-receipt{background:#f5f8ff; border:1px solid #dfe6ff; color:#1d4ed8; font-weight:700}
+	    .btn-receipt:hover{background:#eef3ff}
+	
+	    .i-receipt{stroke:#1d4ed8; stroke-width:2}
+	
+	    .table-total{background:#fff6fa; border-top:2px solid #ffd0e3}
+	    .total-label{color:#475569}
+	
+	    /* Empty state */
+	    .empty-state{padding:28px !important; text-align:center}
+	    .empty-card{display:flex; flex-direction:column; gap:8px; align-items:center}
+	    .empty-emoji{font-size:2rem}
+	    .empty-title{font-weight:900; color:#0f172a}
+	    .empty-sub{color:#64748b}
+	    .empty-actions{display:flex; gap:.6rem; margin-top:.4rem; flex-wrap:wrap; justify-content:center}
+	
+	    /* Mobile tweaks */
+	    @media (max-width: 768px){
+	      .hero-title{font-size:1.1rem}
+	      .hero-sub{font-size:.9rem}
+	      .hero-icon{width:40px; height:40px; font-size:20px}
+	      .fancy-table thead th, .fancy-table tbody td{font-size:.92rem}
+	      .detail-row{gap:.4rem}
+	      .idx-badge{width:30px; height:30px; font-size:.9rem}
+	    }
+	  </style>
+	
+	</section>
+	</html>

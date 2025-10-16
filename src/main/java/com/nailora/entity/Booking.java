@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
 import org.hibernate.annotations.CreationTimestamp;
 
 @Getter
@@ -63,10 +62,10 @@ public class Booking {
 	private BigDecimal servicePrice; // ราคาบริการตอนจอง (snapshot)
 
 	@Column(nullable = false, precision = 12, scale = 2)
-	private BigDecimal addOnPrice; // ราคา add-on รวม (snapshot)
+	private BigDecimal addOnPrice = BigDecimal.ZERO; // ราคา add-on รวม (snapshot)
 
 	@Column(nullable = false, precision = 12, scale = 2)
-	private BigDecimal depositAmount; // มัดจำที่ต้องจ่าย
+	private BigDecimal depositAmount = BigDecimal.ZERO; // มัดจำที่ต้องจ่าย
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20, name = "deposit_status")
@@ -88,7 +87,7 @@ public class Booking {
 	private Gateway gateway = Gateway.STRIPE; // ช่องทางชำระ (ล็อกไว้ที่ STRIPE)
 
 	@CreationTimestamp
-	@Column(name="created_at", updatable = false, nullable = false)
+	@Column(name = "created_at", updatable = false, nullable = false)
 	private LocalDateTime createdAt;
 
 	private LocalDateTime canceledAt;
@@ -99,11 +98,21 @@ public class Booking {
 
 	@PrePersist
 	void onCreate() {
-		if (createdAt == null)
-			createdAt = LocalDateTime.now();
 		if (status == null)
 			status = Status.BOOKED;
 		if (depositStatus == null)
 			depositStatus = DepositStatus.UNPAID;
+		if (addOnPrice == null)
+			addOnPrice = BigDecimal.ZERO;
+		if (depositAmount == null)
+			depositAmount = BigDecimal.ZERO;
+	}
+
+	@PreUpdate
+	void onUpdate() {
+		if (addOnPrice == null)
+			addOnPrice = BigDecimal.ZERO;
+		if (depositAmount == null)
+			depositAmount = BigDecimal.ZERO;
 	}
 }

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::section})}">
+<head>
+  <meta charset="UTF-8" />
+</head>
+<body>
+<section>
+  <style>
+    h1 { color:#c2185b; margin-bottom:1rem; font-size:1.6rem; text-align:center; }
+    table { width:100%; border-collapse:collapse; margin-top:1rem; background:#fff; border-radius:.8rem; overflow:hidden; box-shadow:0 3px 6px rgba(0,0,0,0.05); }
+    th, td { padding:.6rem; border-bottom:1px solid #f3c6d3; text-align:center; font-size:.9rem; }
+    th { background:#f8bbd0; color:#880e4f; }
+    tr:nth-child(even) { background:#fff0f6; }
+    .badge { padding:.3rem .7rem; border-radius:.7rem; font-size:.8rem; }
+    .badge.booked { background:#d1e7dd; color:#0f5132; }
+    .badge.cancelled { background:#f8d7da; color:#842029; }
+    .btn { background:#f48fb1; border:none; border-radius:.5rem; padding:.4rem .8rem; cursor:pointer; color:#fff; font-weight:500; font-size:.85rem; margin:0 .2rem; transition:.3s; }
+    .btn:hover { background:#c2185b; }
+    .btn.gray { background:#aaa; }
+  </style>
+
+  <h1>📘 Bookings</h1>
+
+  <table id="tblBookings">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Customer</th>
+        <th>Phone</th>
+        <th>Note</th>
+        <th>Service Price</th>
+        <th>Add-on Price</th>
+        <th>Deposit</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script src="/js/common.js"></script>
+  <script>
+    (async function(){
+      const API = "/admin/api/bookings";
+      const tbody = document.querySelector("#tblBookings tbody");
+
+      function row(b){
+        const id = b.id ?? b.timeSlotId;
+        const status = (b.status || 'BOOKED').toLowerCase();
+        return `
+          <tr data-id="${id}">
+            <td>${id}</td>
+            <td>${b.customerName || "-"}</td>
+            <td>${b.phone || "-"}</td>
+            <td>${b.note || "-"}</td>
+            <td>฿${Number(b.servicePrice||0).toFixed(2)}</td>
+            <td>฿${Number(b.addOnPrice||0).toFixed(2)}</td>
+            <td>฿${Number(b.depositAmount||0).toFixed(2)}</td>
+            <td><span class="badge ${status}">${b.status || "BOOKED"}</span></td>
+            <td>
+              <button class="btn" data-act="booked">Mark Booked</button>
+              <button class="btn gray" data-act="cancel">Cancel</button>
+            </td>
+          </tr>
+        `;
+      }
+
+      async function load(){
+        const list = await api.get(API);
+        tbody.innerHTML = (list && list.length) ? list.map(row).join("") :
+          '<tr><td colspan="9">No bookings found</td></tr>';
+      }
+
+      tbody.addEventListener("click", async e => {
+        const btn = e.target.closest("button"); if(!btn) return;
+        const tr = btn.closest("tr");
+        const id = tr.dataset.id;
+        if(btn.dataset.act === "booked"){
+          await api.patch(`/admin/api/bookings/${id}/status?status=BOOKED`, {});
+        }
+        if(btn.dataset.act === "cancel"){
+          await api.patch(`/admin/api/bookings/${id}/status?status=CANCELLED`, {});
+        }
+        await load();
+      });
+
+      await load();
+    })();
+  </script>
+</section>
+</body>
+</html>

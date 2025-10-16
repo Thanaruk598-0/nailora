@@ -35,7 +35,6 @@ public class BookingServiceImpl implements BookingService {
 	private final BookingRepository bookingRepo;
 	private final TimeSlotRepository timeSlotRepo;
 	private final CustomerAccessService accessService;
-	private final DepositService depositService;
 	private final java.time.Clock clock;
 	private final JdbcTemplate jdbc;
 
@@ -71,8 +70,8 @@ public class BookingServiceImpl implements BookingService {
 
 		// 4) คำนวณราคา/มัดจำแบบง่าย (Step 2): deposit = depositMin ของ service
 		// (Step 4-5 จะต่อยอด logic add-ons / ส่วนลด ฯลฯ)
-		BigDecimal servicePrice = slot.getService().getPrice();
-		BigDecimal deposit = slot.getService().getDepositMin();
+		BigDecimal servicePrice = slot.getServiceItem().getPrice();
+		BigDecimal deposit = slot.getServiceItem().getDepositMin();
 
 		List<Long> addOnIds = req.addOnIds() == null ? java.util.List.of() : req.addOnIds();
 		BigDecimal addOnPrice = java.math.BigDecimal.ZERO;

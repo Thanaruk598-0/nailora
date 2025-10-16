@@ -59,7 +59,7 @@ public class MyBookingController {
 		for (var b : list) {
 			var m = new LinkedHashMap<String, Object>();
 			m.put("id", b.getId());
-			m.put("serviceName", b.getTimeSlot().getService().getName());
+			m.put("serviceName", b.getTimeSlot().getServiceItem().getName());
 			m.put("techName", b.getTimeSlot().getTechName());
 			m.put("startAt", b.getTimeSlot().getStartAt());
 			m.put("startAtText", b.getTimeSlot().getStartAt().format(fmt));
