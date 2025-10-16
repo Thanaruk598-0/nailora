@@ -33,3 +33,5 @@ tmp/
 **/*.pem
 **/*.key
 docker-compose*.yml
+
+application-secret.properties
