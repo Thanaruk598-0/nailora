@@ -99,7 +99,7 @@ public class PublicDayController {
 				       )
 				  ))                                  AS "remaining"
 				FROM time_slot t
-				WHERE t.service_item_id = ?
+				WHERE t.service_id = ?
 				  AND t.start_at >= ?
 				  AND t.start_at <  ?
 				  AND t.open   = TRUE
